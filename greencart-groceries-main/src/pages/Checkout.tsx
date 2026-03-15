@@ -9,15 +9,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useMember } from "@/lib/member-context";
 import { CheckCircle } from "lucide-react";
 
 const ORDERS_KEY = "gc_orders";
 
 const Checkout = () => {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, clearCart } = useCart();
+  const { isMember } = useMember();
   const navigate = useNavigate();
   const [placed, setPlaced] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
+
+  const computeItemPrice = (item: { product: any; quantity: number }) => {
+    const base = item.product.discountPrice || item.product.price;
+    return isMember && item.product.isTodayOffer ? Math.round(base * 0.9) * item.quantity : base * item.quantity;
+  };
+
+  const totalVipPrice = items.reduce((sum, item) => sum + computeItemPrice(item), 0);
 
   const saveOrder = () => {
     const existing = localStorage.getItem(ORDERS_KEY);
@@ -25,9 +34,15 @@ const Checkout = () => {
     const newOrder = {
       id: `${Date.now()}`,
       name: form.name,
-      total: totalPrice,
+      total: totalVipPrice,
       date: new Date().toLocaleString(),
-      items: items.map((item) => ({ productName: item.product.name, quantity: item.quantity, amount: (item.product.discountPrice || item.product.price) * item.quantity })),
+      items: items.map((item) => {
+        const base = item.product.discountPrice || item.product.price;
+        const amount = isMember && item.product.isTodayOffer
+          ? Math.round(base * 0.9) * item.quantity
+          : base * item.quantity;
+        return { productName: item.product.name, quantity: item.quantity, amount };
+      }),
     };
     localStorage.setItem(ORDERS_KEY, JSON.stringify([newOrder, ...orders]));
   };
@@ -51,7 +66,7 @@ const Checkout = () => {
         <div className="container mx-auto px-4 py-20 text-center space-y-4">
           <CheckCircle className="h-20 w-20 text-primary mx-auto" />
           <h1 className="text-3xl font-bold">Order Placed!</h1>
-          <p className="text-muted-foreground">Your order has been placed successfully. You will pay ₹{totalPrice || 0} on delivery.</p>
+          <p className="text-muted-foreground">Your order has been placed successfully. You will pay ₹{totalVipPrice || 0} on delivery.</p>
           <Button onClick={() => navigate("/")} className="rounded-full">Continue Shopping</Button>
         </div>
         <Footer />
@@ -108,21 +123,25 @@ const Checkout = () => {
                 </div>
               </div>
             </Card>
-            <Button type="submit" size="lg" className="w-full rounded-full">Place Order — ₹{totalPrice}</Button>
+            <Button type="submit" size="lg" className="w-full rounded-full">Place Order — ₹{totalVipPrice}</Button>
           </form>
           <Card className="p-6 h-fit space-y-4">
             <h3 className="text-lg font-bold">Order Summary</h3>
             <div className="space-y-3">
-              {items.map(({ product, quantity }) => (
-                <div key={product.id} className="flex justify-between text-sm">
-                  <span>{product.name} × {quantity}</span>
-                  <span>₹{(product.discountPrice || product.price) * quantity}</span>
-                </div>
-              ))}
+              {items.map(({ product, quantity }) => {
+                const base = product.discountPrice || product.price;
+                const itemPrice = isMember && product.isTodayOffer ? Math.round(base * 0.9) : base;
+                return (
+                  <div key={product.id} className="flex justify-between text-sm">
+                    <span>{product.name} × {quantity}</span>
+                    <span>₹{itemPrice * quantity}</span>
+                  </div>
+                );
+              })}
             </div>
             <div className="border-t pt-3 flex justify-between font-bold">
               <span>Total</span>
-              <span className="text-primary">₹{totalPrice}</span>
+              <span className="text-primary">₹{totalVipPrice}</span>
             </div>
           </Card>
         </div>

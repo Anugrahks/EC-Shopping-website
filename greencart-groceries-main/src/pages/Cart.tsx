@@ -1,13 +1,20 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useCart } from "@/lib/cart-context";
+import { useMember } from "@/lib/member-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Cart = () => {
-  const { items, updateQuantity, removeFromCart, totalPrice } = useCart();
+  const { items, updateQuantity, removeFromCart } = useCart();
+  const { isMember } = useMember();
+  const vipTotal = items.reduce((sum, { product, quantity }) => {
+    const base = product.discountPrice || product.price;
+    const itemPrice = isMember && product.isTodayOffer ? Math.round(base * 0.9) : base;
+    return sum + itemPrice * quantity;
+  }, 0);
 
   if (items.length === 0) {
     return (
@@ -37,7 +44,7 @@ const Cart = () => {
                 <div className="flex-1 space-y-1">
                   <h3 className="font-semibold">{product.name}</h3>
                   <p className="text-sm text-muted-foreground">{product.unit}</p>
-                  <p className="font-bold text-primary">₹{product.discountPrice || product.price}</p>
+                  <p className="font-bold text-primary">₹{isMember && product.isTodayOffer ? Math.round((product.discountPrice || product.price) * 0.9) : (product.discountPrice || product.price)}</p>
                 </div>
                 <div className="flex flex-col items-end justify-between">
                   <button onClick={() => removeFromCart(product.id)} className="text-muted-foreground hover:text-destructive">
@@ -61,15 +68,19 @@ const Cart = () => {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>₹{totalPrice}</span>
+                <span>₹{vipTotal}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery</span>
                 <span className="text-primary font-medium">Free</span>
               </div>
+              <div className="border-t pt-2 flex justify-between">
+                <span className="text-muted-foreground">VIP Discount</span>
+                <span className="text-green-600">{isMember ? "Applied" : "Not applied"}</span>
+              </div>
               <div className="border-t pt-2 flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span className="text-primary">₹{totalPrice}</span>
+                <span className="text-primary">₹{vipTotal}</span>
               </div>
             </div>
             <Button asChild className="w-full rounded-full" size="lg">

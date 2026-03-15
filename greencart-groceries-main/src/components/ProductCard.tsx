@@ -1,5 +1,6 @@
 import { Product } from "@/lib/data";
 import { useCart } from "@/lib/cart-context";
+import { useMember } from "@/lib/member-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Star, ShoppingCart } from "lucide-react";
@@ -7,9 +8,12 @@ import { Link } from "react-router-dom";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
+  const { isMember } = useMember();
   const discount = product.discountPrice
     ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
     : 0;
+  const basePrice = product.discountPrice || product.price;
+  const vipPrice = product.isTodayOffer ? Math.round(basePrice * 0.9) : basePrice;
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 bg-card">
@@ -39,12 +43,15 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="text-xs text-muted-foreground">{product.rating}</span>
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-primary">
-              ₹{product.discountPrice || product.price}
-            </span>
-            {product.discountPrice && (
-              <span className="text-xs line-through text-muted-foreground">₹{product.price}</span>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-primary">₹{isMember && product.isTodayOffer ? vipPrice : basePrice}</span>
+              {product.discountPrice && (
+                <span className="text-xs line-through text-muted-foreground">₹{product.price}</span>
+              )}
+            </div>
+            {isMember && product.isTodayOffer && (
+              <span className="text-xs text-success">VIP price: ₹{vipPrice}</span>
             )}
           </div>
           <Button

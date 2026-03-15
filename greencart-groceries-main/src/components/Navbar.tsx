@@ -4,12 +4,15 @@ import { ShoppingCart, Search, Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart-context";
+import { useMember } from "@/lib/member-context";
 import { Badge } from "@/components/ui/badge";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [numberInput, setNumberInput] = useState("");
   const { totalItems } = useCart();
+  const { memberNumber, isMember, registeredNumbers, setMemberNumber, registerNumber, logoutMember } = useMember();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -50,6 +53,17 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isMember ? (
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-primary bg-primary/5 px-3 py-1 text-xs text-primary">
+              <span>VIP</span>
+              <span className="font-semibold">{memberNumber}</span>
+              <button onClick={logoutMember} className="underline ml-1">Logout</button>
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-muted/40 bg-muted/10 px-3 py-1 text-xs text-muted-foreground">
+              <span>No VIP</span>
+            </div>
+          )}
           <Link to="/cart" className="relative">
             <ShoppingCart className="h-6 w-6 text-foreground hover:text-primary transition-colors" />
             {totalItems > 0 && (
@@ -67,6 +81,20 @@ export function Navbar() {
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
+          <div className="hidden md:flex items-center gap-2">
+            <Input
+              placeholder="VIP phone"
+              className="w-28"
+              value={numberInput}
+              onChange={(e) => setNumberInput(e.target.value)}
+            />
+            <Button size="sm" onClick={() => registerNumber(numberInput)}>
+              Register
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setMemberNumber(numberInput)}>
+              Login
+            </Button>
+          </div>
         </div>
       </div>
 

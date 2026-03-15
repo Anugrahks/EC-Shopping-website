@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-context";
+import { useMember } from "@/lib/member-context";
 import { Star, ShoppingCart, ArrowLeft } from "lucide-react";
 import type { Product } from "@/lib/data";
 
@@ -60,6 +61,9 @@ const ProductDetail = () => {
   const discount = product.discountPrice
     ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
     : 0;
+  const { isMember } = useMember();
+  const basePrice = product.discountPrice || product.price;
+  const vipPrice = product.isTodayOffer ? Math.round(basePrice * 0.9) : basePrice;
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,7 +88,7 @@ const ProductDetail = () => {
               <span className="text-sm text-muted-foreground">({product.rating})</span>
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-primary">₹{product.discountPrice || product.price}</span>
+              <span className="text-3xl font-bold text-primary">₹{isMember && product.isTodayOffer ? vipPrice : basePrice}</span>
               {product.discountPrice && (
                 <>
                   <span className="text-xl line-through text-muted-foreground">₹{product.price}</span>
@@ -92,6 +96,9 @@ const ProductDetail = () => {
                 </>
               )}
             </div>
+            {isMember && product.isTodayOffer && (
+              <div className="text-sm text-success">VIP offer: ₹{vipPrice} (10% extra VIP savings)</div>
+            )}
             <p className="text-muted-foreground">{product.description}</p>
             <p className="text-sm">Unit: <span className="font-medium">{product.unit}</span></p>
             <p className="text-sm">
