@@ -32,7 +32,7 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 border-b bg-card shadow-sm">
-      <div className="container mx-auto flex items-center justify-between gap-4 px-4 py-3">
+      <div className="container mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-3">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <span className="text-2xl">🥬</span>
           <span className="text-xl font-bold text-primary">EC Shopping</span>
@@ -79,7 +79,7 @@ export function Navbar() {
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             <Link to="/login" className="inline-flex items-center gap-1 rounded-full bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
               <LogIn className="h-4 w-4" />
               Login
