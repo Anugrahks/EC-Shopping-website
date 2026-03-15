@@ -7,13 +7,16 @@ export function HeroBanner() {
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-accent to-primary/5 mx-4 mt-6">
       <div className="container mx-auto px-6 py-12 md:py-20 flex flex-col md:flex-row items-center gap-8">
         <div className="flex-1 space-y-5 text-center md:text-left">
-          <h1 className="text-3xl md:text-5xl font-bold leading-tight text-foreground">
-            Freshness that <span className="text-primary">inspires</span>
-            <br />a healthy lifestyle.
-          </h1>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold text-primary">
+              <span className="rounded-full bg-primary/10 px-3 py-1">EC Shopping Center</span>
+              <span className="rounded-full bg-secondary/10 px-3 py-1">Claimed</span>
+            </div>
+            <h1 className="text-3xl md:text-5xl font-bold leading-tight text-foreground">
+              Corporate Companies.
+              <br />3.6 • 7 Ratings • Panniyur, Kannur
+            </h1>
           <p className="text-muted-foreground max-w-md mx-auto md:mx-0">
-            Experience grocery shopping with the highest quality, premium freshness. 
-            Fresh and fast delivery right to your doorstep.
+            EC Shopping Center brings verified grocery deals, member-only offer prices, and instant checkout.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
             <Button asChild size="lg" className="rounded-full">

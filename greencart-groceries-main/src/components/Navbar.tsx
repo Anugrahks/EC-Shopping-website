@@ -12,7 +12,8 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [numberInput, setNumberInput] = useState("");
   const { totalItems } = useCart();
-  const { memberNumber, isMember, registeredNumbers, setMemberNumber, registerNumber, logoutMember } = useMember();
+  const { memberNumber, isMember, description, setMemberNumber, registerNumber, logoutMember } = useMember();
+  const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -28,7 +29,7 @@ export function Navbar() {
       <div className="container mx-auto flex items-center justify-between gap-4 px-4 py-3">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <span className="text-2xl">🥬</span>
-          <span className="text-xl font-bold text-primary">Green Shop</span>
+          <span className="text-xl font-bold text-primary">EC Shopping</span>
         </Link>
 
         <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
@@ -53,17 +54,10 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isMember ? (
-            <div className="hidden md:flex items-center gap-2 rounded-full border border-primary bg-primary/5 px-3 py-1 text-xs text-primary">
-              <span>VIP</span>
-              <span className="font-semibold">{memberNumber}</span>
-              <button onClick={logoutMember} className="underline ml-1">Logout</button>
-            </div>
-          ) : (
-            <div className="hidden md:flex items-center gap-2 rounded-full border border-muted/40 bg-muted/10 px-3 py-1 text-xs text-muted-foreground">
-              <span>No VIP</span>
-            </div>
-          )}
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-muted/40 bg-muted/10 px-3 py-1 text-xs text-muted-foreground">
+            {isMember ? `Member: ${memberNumber}` : "No membership"}
+            {isMember && <button onClick={logoutMember} className="underline text-xs ml-2">Logout</button>}
+          </div>
           <Link to="/cart" className="relative">
             <ShoppingCart className="h-6 w-6 text-foreground hover:text-primary transition-colors" />
             {totalItems > 0 && (
@@ -83,21 +77,27 @@ export function Navbar() {
           </button>
           <div className="hidden md:flex items-center gap-2">
             <Input
-              placeholder="VIP phone"
+              placeholder="Enter phone"
               className="w-28"
               value={numberInput}
               onChange={(e) => setNumberInput(e.target.value)}
             />
-            <Button size="sm" onClick={() => registerNumber(numberInput)}>
+            <Button size="sm" onClick={() => {
+              const ok = registerNumber(numberInput);
+              setMessage(ok ? "Registered and logged in" : "Enter your phone number");
+            }}>
               Register
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setMemberNumber(numberInput)}>
+            <Button size="sm" variant="outline" onClick={() => {
+              const ok = setMemberNumber(numberInput);
+              setMessage(ok ? "Logged in" : "Number not registered");
+            }}>
               Login
             </Button>
           </div>
+          <div className="hidden md:flex text-xs text-muted-foreground">{message || description}</div>
         </div>
       </div>
-
       {mobileMenuOpen && (
         <div className="md:hidden border-t bg-card px-4 py-3 space-y-3">
           <form onSubmit={handleSearch}>

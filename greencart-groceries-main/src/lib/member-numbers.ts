@@ -1,0 +1,5 @@
+export const DEFAULT_MEMBER_NUMBERS = [
+  "8078312105",
+  "919876543210",
+  "9876543210",
+];

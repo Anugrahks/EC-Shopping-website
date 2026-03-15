@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { DEFAULT_MEMBER_NUMBERS } from "./member-numbers";
 
 const MEMBER_NUMBER_KEY = "gc_member_number";
 const REGISTERED_NUMBERS_KEY = "gc_registered_numbers";
@@ -7,10 +8,11 @@ type MemberContextType = {
   memberNumber: string;
   isMember: boolean;
   registeredNumbers: string[];
-  setMemberNumber: (number: string) => void;
-  registerNumber: (number: string) => void;
+  setMemberNumber: (number: string) => boolean;
+  registerNumber: (number: string) => boolean;
   logoutMember: () => void;
   isNumberRegistered: (number: string) => boolean;
+  description: string;
 };
 
 const MemberContext = createContext<MemberContextType | undefined>(undefined);
@@ -28,8 +30,10 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(savedRegistered) as string[];
         setRegisteredNumbers(parsed);
       } catch {
-        setRegisteredNumbers([]);
+        setRegisteredNumbers(DEFAULT_MEMBER_NUMBERS);
       }
+    } else {
+      setRegisteredNumbers(DEFAULT_MEMBER_NUMBERS);
     }
   }, []);
 
@@ -43,20 +47,26 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
 
   const setMemberNumber = (number: string) => {
     const cleaned = number.trim();
+    if (!cleaned) return false;
+    if (!registeredNumbers.includes(cleaned)) return false;
     setMemberNumberState(cleaned);
     localStorage.setItem(MEMBER_NUMBER_KEY, cleaned);
+    return true;
   };
 
   const registerNumber = (number: string) => {
     const cleaned = number.trim();
-    if (!cleaned) return;
+    if (!cleaned) return false;
+    const normalized = cleaned;
     setRegisteredNumbers((prev) => {
-      if (prev.includes(cleaned)) return prev;
-      const next = [...prev, cleaned];
+      if (prev.includes(normalized)) return prev;
+      const next = [...prev, normalized];
       localStorage.setItem(REGISTERED_NUMBERS_KEY, JSON.stringify(next));
       return next;
     });
-    setMemberNumber(cleaned);
+    setMemberNumberState(normalized);
+    localStorage.setItem(MEMBER_NUMBER_KEY, normalized);
+    return true;
   };
 
   const logoutMember = () => {
@@ -74,6 +84,10 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
     registerNumber,
     logoutMember,
     isNumberRegistered,
+    description:
+      memberNumber.trim().length > 0 && registeredNumbers.includes(memberNumber.trim())
+        ? "Registered member: offers enabled"
+        : "Not registered: register your number to get offer prices",
   }), [memberNumber, registeredNumbers]);
 
   return <MemberContext.Provider value={value}>{children}</MemberContext.Provider>;
