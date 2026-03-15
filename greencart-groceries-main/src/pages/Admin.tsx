@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image as ImageIcon, User } from "lucide-react";
+import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image as ImageIcon, User, Trash } from "lucide-react";
 import { toast } from "sonner";
 
 const ORDERS_KEY = "gc_orders";
@@ -25,7 +25,7 @@ type SavedOrder = {
 };
 
 const Admin = () => {
-  const { members, addMember } = useMember();
+  const { members, addMember, removeMember } = useMember();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [newMemberNumber, setNewMemberNumber] = useState("");
@@ -347,7 +347,20 @@ const Admin = () => {
                         <p className="font-medium">{member.name}</p>
                         <p className="text-xs text-muted-foreground">{member.number}</p>
                       </div>
-                      <span className="text-xs text-success">VIP</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-success">VIP</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => {
+                            removeMember(member.number);
+                            toast.success(`Removed member ${member.name}`);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </Card>
                   ))
                 )}

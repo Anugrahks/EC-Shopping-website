@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, User } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, User, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart-context";
@@ -73,9 +73,6 @@ export function Navbar() {
               </Badge>
             )}
           </Link>
-          <Link to="/admin">
-            <User className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
-          </Link>
           <button
             className="md:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -83,7 +80,7 @@ export function Navbar() {
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
           <div className="flex items-center gap-2">
-            <Link to="/login" className="text-sm underline text-primary">Login / Register</Link>
+            <Link to="/login" className="text-sm underline text-primary flex items-center gap-1"><LogIn className="h-4 w-4" />Login / Register</Link>
             <span className="hidden md:inline text-xs text-muted-foreground">{message || "Use login page for member/customer access"}</span>
           </div>
         </div>

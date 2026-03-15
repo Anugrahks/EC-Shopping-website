@@ -21,6 +21,7 @@ type MemberContextType = {
   loginMember: (number: string) => boolean;
   addMember: (number: string, name: string) => boolean;
   logoutMember: () => void;
+  removeMember: (number: string) => void;
   memberName: string;
   customer: Customer | null;
   registerCustomer: (customer: Customer) => boolean;
@@ -127,6 +128,16 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
     persistMemberSession(null);
   };
 
+  const removeMember = (number: string) => {
+    const cleaned = number.trim();
+    if (!cleaned) return;
+    const next = members.filter((m) => m.number !== cleaned);
+    persistMembers(next);
+    if (member?.number === cleaned) {
+      persistMemberSession(null);
+    }
+  };
+
   const registerCustomer = (data: Customer) => {
     if (!data.name.trim() || !data.phone.trim()) return false;
     const next = [...customerList.filter((c) => c.phone !== data.phone), data];
@@ -160,6 +171,7 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
     registerCustomer,
     loginCustomer,
     logoutCustomer,
+    removeMember,
     customerList,
   }), [member, members, customer, customerList]);
 
