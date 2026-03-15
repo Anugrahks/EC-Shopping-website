@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { products as allProducts, categories as allCategories, Product } from "@/lib/data";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,72 @@ import { Switch } from "@/components/ui/switch";
 import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
+const ORDERS_KEY = "gc_orders";
+
+type SavedOrder = {
+  id: string;
+  name: string;
+  total: number;
+  date: string;
+  items: Array<{ productName: string; quantity: number; amount: number }>;
+};
+
 const Admin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [productsList, setProductsList] = useState<Product[]>(allProducts);
+  const [orders, setOrders] = useState<SavedOrder[]>([]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(ORDERS_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as SavedOrder[];
+        setOrders(parsed);
+      } catch {
+        setOrders([]);
+      }
+    }
+  }, []);
+
+  const refreshOrders = () => {
+    const stored = localStorage.getItem(ORDERS_KEY);
+    if (stored) {
+      try {
+        setOrders(JSON.parse(stored));
+      } catch {
+        setOrders([]);
+      }
+    } else {
+      setOrders([]);
+    }
+  };
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === ORDERS_KEY) {
+        refreshOrders();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const toggleOffer = (id: string) => {
+    setProductsList((prev) => prev.map((p) => (p.id === id ? { ...p, isTodayOffer: !p.isTodayOffer } : p)));
+    toast.success("Offer updated");
+  };
+
+  const deleteProduct = (id: string) => {
+    setProductsList((prev) => prev.filter((p) => p.id !== id));
+    toast.success("Product deleted");
+  };
+
+  const stats = [
+    { label: "Products", value: productsList.length, icon: Package },
+    { label: "Categories", value: allCategories.length, icon: Tag },
+    { label: "Today's Offers", value: productsList.filter((p) => p.isTodayOffer).length, icon: ShoppingBag },
+  ];
 
   if (!isLoggedIn) {
     return (
@@ -42,22 +104,6 @@ const Admin = () => {
       </div>
     );
   }
-
-  const toggleOffer = (id: string) => {
-    setProductsList(prev => prev.map(p => p.id === id ? { ...p, isTodayOffer: !p.isTodayOffer } : p));
-    toast.success("Offer updated");
-  };
-
-  const deleteProduct = (id: string) => {
-    setProductsList(prev => prev.filter(p => p.id !== id));
-    toast.success("Product deleted");
-  };
-
-  const stats = [
-    { label: "Products", value: productsList.length, icon: Package },
-    { label: "Categories", value: allCategories.length, icon: Tag },
-    { label: "Today's Offers", value: productsList.filter(p => p.isTodayOffer).length, icon: ShoppingBag },
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,11 +203,44 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="orders">
-            <Card className="p-8 text-center text-muted-foreground">
-              <ShoppingBag className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No orders yet. Orders will appear here when customers place them.</p>
-              <p className="text-xs mt-2">Connect Lovable Cloud to enable real order tracking.</p>
-            </Card>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold">Recent Orders</h2>
+                  <p className="text-sm text-muted-foreground">Orders created from checkout are stored in localStorage.</p>
+                </div>
+                <Button size="sm" onClick={refreshOrders}>Refresh</Button>
+              </div>
+
+              {orders.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  <ShoppingBag className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No orders yet. Place an order from checkout to see it here.</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-4 gap-2 px-3 py-2 text-xs uppercase text-muted-foreground border-b font-semibold">
+                    <div>Order ID</div>
+                    <div>Customer</div>
+                    <div>Date</div>
+                    <div className="text-right">Total</div>
+                  </div>
+                  {orders.map((order) => (
+                    <Card key={order.id} className="p-3">
+                      <div className="grid grid-cols-4 gap-2 text-sm">
+                        <div className="font-medium">#{order.id.slice(-6)}</div>
+                        <div>{order.name}</div>
+                        <div>{order.date}</div>
+                        <div className="text-right font-semibold">₹{order.total}</div>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Items: {order.items.length} · {order.items.map((i) => `${i.productName}×${i.quantity}`).join(", ")}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="banners">
