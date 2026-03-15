@@ -8,8 +8,8 @@ type MemberContextType = {
   memberNumber: string;
   isMember: boolean;
   registeredNumbers: string[];
-  setMemberNumber: (number: string) => boolean;
-  registerNumber: (number: string) => boolean;
+  loginNumber: (number: string) => boolean;
+  addMemberNumber: (number: string) => boolean;
   logoutMember: () => void;
   isNumberRegistered: (number: string) => boolean;
   description: string;
@@ -45,7 +45,7 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(REGISTERED_NUMBERS_KEY, JSON.stringify(registeredNumbers));
   }, [registeredNumbers]);
 
-  const setMemberNumber = (number: string) => {
+  const loginNumber = (number: string) => {
     const cleaned = number.trim();
     if (!cleaned) return false;
     if (!registeredNumbers.includes(cleaned)) return false;
@@ -54,18 +54,15 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const registerNumber = (number: string) => {
+  const addMemberNumber = (number: string) => {
     const cleaned = number.trim();
     if (!cleaned) return false;
-    const normalized = cleaned;
     setRegisteredNumbers((prev) => {
-      if (prev.includes(normalized)) return prev;
-      const next = [...prev, normalized];
+      if (prev.includes(cleaned)) return prev;
+      const next = [...prev, cleaned];
       localStorage.setItem(REGISTERED_NUMBERS_KEY, JSON.stringify(next));
       return next;
     });
-    setMemberNumberState(normalized);
-    localStorage.setItem(MEMBER_NUMBER_KEY, normalized);
     return true;
   };
 
@@ -80,14 +77,14 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
     memberNumber,
     isMember: memberNumber.trim().length > 0 && registeredNumbers.includes(memberNumber.trim()),
     registeredNumbers,
-    setMemberNumber,
-    registerNumber,
+    loginNumber,
+    addMemberNumber,
     logoutMember,
     isNumberRegistered,
     description:
       memberNumber.trim().length > 0 && registeredNumbers.includes(memberNumber.trim())
         ? "Registered member: offers enabled"
-        : "Not registered: register your number to get offer prices",
+        : "Not registered: login with your shop membership number",
   }), [memberNumber, registeredNumbers]);
 
   return <MemberContext.Provider value={value}>{children}</MemberContext.Provider>;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
-import { products as allProducts, categories as allCategories, Product } from "@/lib/data";
+import { useMember } from "@/lib/member-context";
+import { products as initialProducts, categories as initialCategories, Product } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image
 import { toast } from "sonner";
 
 const ORDERS_KEY = "gc_orders";
+const CATEGORIES_KEY = "gc_categories";
 
 type SavedOrder = {
   id: string;
@@ -23,19 +25,30 @@ type SavedOrder = {
 };
 
 const Admin = () => {
+  const { registeredNumbers, addMemberNumber } = useMember();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
-  const [productsList, setProductsList] = useState<Product[]>(allProducts);
+  const [newMemberNumber, setNewMemberNumber] = useState("");
+  const [newCategory, setNewCategory] = useState({ name: "", icon: "", image: "" });
+  const [productsList, setProductsList] = useState<Product[]>(initialProducts);
+  const [categoriesList, setCategoriesList] = useState(initialCategories);
   const [orders, setOrders] = useState<SavedOrder[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(ORDERS_KEY);
-    if (stored) {
+    const storedOrders = localStorage.getItem(ORDERS_KEY);
+    if (storedOrders) {
       try {
-        const parsed = JSON.parse(stored) as SavedOrder[];
-        setOrders(parsed);
+        setOrders(JSON.parse(storedOrders));
       } catch {
         setOrders([]);
+      }
+    }
+    const storedCategories = localStorage.getItem(CATEGORIES_KEY);
+    if (storedCategories) {
+      try {
+        setCategoriesList(JSON.parse(storedCategories));
+      } catch {
+        setCategoriesList(initialCategories);
       }
     }
   }, []);
@@ -75,7 +88,7 @@ const Admin = () => {
 
   const stats = [
     { label: "Products", value: productsList.length, icon: Package },
-    { label: "Categories", value: allCategories.length, icon: Tag },
+    { label: "Categories", value: categoriesList.length, icon: Tag },
     { label: "Today's Offers", value: productsList.filter((p) => p.isTodayOffer).length, icon: ShoppingBag },
   ];
 
@@ -136,6 +149,7 @@ const Admin = () => {
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="banners">Banners</TabsTrigger>
           </TabsList>
 
@@ -188,17 +202,60 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="categories">
-            <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {allCategories.map((cat) => (
-                <Card key={cat.id} className="p-4 flex items-center gap-3">
-                  <img src={cat.image} alt={cat.name} className="w-12 h-12 rounded-full object-cover" />
-                  <div className="flex-1">
-                    <p className="font-medium">{cat.name}</p>
-                    <p className="text-xs text-muted-foreground">{productsList.filter(p => p.category === cat.name).length} products</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-3 w-3" /></Button>
-                </Card>
-              ))}
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-2 md:items-end justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">Manage Categories</h2>
+                  <p className="text-sm text-muted-foreground">Add new categories and they appear on the home page.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto">
+                  <Input
+                    placeholder="Category name"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory((prev) => ({ ...prev, name: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Icon"
+                    value={newCategory.icon}
+                    onChange={(e) => setNewCategory((prev) => ({ ...prev, icon: e.target.value }))}
+                  />
+                  <Button
+                    className="whitespace-nowrap"
+                    onClick={() => {
+                      if (!newCategory.name.trim()) {
+                        toast.error("Category name is required");
+                        return;
+                      }
+                      const cat = {
+                        id: `${Date.now()}`,
+                        name: newCategory.name.trim(),
+                        icon: newCategory.icon.trim() || "🛍️",
+                        image: newCategory.image.trim() || "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=200&fit=crop",
+                      };
+                      setCategoriesList((prev) => {
+                        const next = [...prev, cat];
+                        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(next));
+                        return next;
+                      });
+                      setNewCategory({ name: "", icon: "", image: "" });
+                      toast.success("Category added");
+                    }}
+                  >
+                    Add Category
+                  </Button>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {categoriesList.map((cat) => (
+                  <Card key={cat.id} className="p-4 flex items-center gap-3">
+                    <div className="w-12 h-12 grid place-items-center rounded-full bg-muted text-xl">{cat.icon}</div>
+                    <div className="flex-1">
+                      <p className="font-medium">{cat.name}</p>
+                      <p className="text-xs text-muted-foreground">{productsList.filter((p) => p.category === cat.name).length} products</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           </TabsContent>
 
@@ -240,6 +297,53 @@ const Admin = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="members">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold">Member Management</h2>
+                  <p className="text-sm text-muted-foreground">Add membership numbers that can login for VIP prices.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="New member number"
+                    className="w-48"
+                    value={newMemberNumber}
+                    onChange={(e) => setNewMemberNumber(e.target.value)}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const added = addMemberNumber(newMemberNumber);
+                      if (added) {
+                        toast.success(`Added member ${newMemberNumber}`);
+                        setNewMemberNumber("");
+                      } else {
+                        toast.error("Enter a valid member number");
+                      }
+                    }}
+                  >
+                    Add Number
+                  </Button>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                {registeredNumbers.length === 0 ? (
+                  <Card className="p-3 text-center text-muted-foreground">No member numbers found.</Card>
+                ) : (
+                  registeredNumbers.map((num) => (
+                    <Card key={num} className="p-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{num}</p>
+                        <p className="text-xs text-muted-foreground">VIP login enabled</p>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
             </div>
           </TabsContent>
 

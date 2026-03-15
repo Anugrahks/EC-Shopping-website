@@ -1,12 +1,31 @@
-import { useState } from "react";
-import { products, categories } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { products } from "@/lib/data";
 import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
 
+const CATEGORIES_KEY = "gc_categories";
+
 export function AllProducts() {
   const [activeCategory, setActiveCategory] = useState("All");
-  const allCategories = ["All", ...categories.map((c) => c.name)];
+  const [categories, setCategories] = useState<string[]>([]);
 
+  useEffect(() => {
+    const stored = localStorage.getItem(CATEGORIES_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCategories(parsed.map((c: any) => c.name ?? c));
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setCategories([...new Set(products.map((p) => p.category))]);
+  }, []);
+
+  const allCategories = ["All", ...categories];
   const filtered = activeCategory === "All"
     ? products
     : products.filter((p) => p.category === activeCategory);

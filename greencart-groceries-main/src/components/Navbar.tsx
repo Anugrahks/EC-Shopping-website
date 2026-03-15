@@ -12,10 +12,9 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [numberInput, setNumberInput] = useState("");
   const { totalItems } = useCart();
-  const { memberNumber, isMember, description, setMemberNumber, registerNumber, logoutMember } = useMember();
+  const { memberNumber, isMember, description, loginNumber, logoutMember } = useMember();
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -55,7 +54,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 rounded-full border border-muted/40 bg-muted/10 px-3 py-1 text-xs text-muted-foreground">
-            {isMember ? `Member: ${memberNumber}` : "No membership"}
+            {isMember ? `EC Shopping Card • ${memberNumber}` : "No membership"}
             {isMember && <button onClick={logoutMember} className="underline text-xs ml-2">Logout</button>}
           </div>
           <Link to="/cart" className="relative">
@@ -77,20 +76,14 @@ export function Navbar() {
           </button>
           <div className="hidden md:flex items-center gap-2">
             <Input
-              placeholder="Enter phone"
+              placeholder="Member number"
               className="w-28"
               value={numberInput}
               onChange={(e) => setNumberInput(e.target.value)}
             />
             <Button size="sm" onClick={() => {
-              const ok = registerNumber(numberInput);
-              setMessage(ok ? "Registered and logged in" : "Enter your phone number");
-            }}>
-              Register
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => {
-              const ok = setMemberNumber(numberInput);
-              setMessage(ok ? "Logged in" : "Number not registered");
+              const ok = loginNumber(numberInput);
+              setMessage(ok ? "Logged in successfully" : "Number not registered");
             }}>
               Login
             </Button>
