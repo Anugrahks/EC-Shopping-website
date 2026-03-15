@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, User, LogIn } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, User, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart-context";
@@ -82,7 +82,11 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             <Link to="/login" className="inline-flex items-center gap-1 rounded-full bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
               <LogIn className="h-4 w-4" />
-              Login / Register
+              Login
+            </Link>
+            <Link to="/login" className="inline-flex items-center gap-1 rounded-full border border-green-600 px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 transition-colors">
+              <UserPlus className="h-4 w-4" />
+              Register
             </Link>
             <span className="hidden md:inline text-xs text-muted-foreground">{message || "Use login page for member/customer access"}</span>
           </div>
