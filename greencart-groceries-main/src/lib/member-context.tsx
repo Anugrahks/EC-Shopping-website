@@ -1,91 +1,162 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { DEFAULT_MEMBER_NUMBERS } from "./member-numbers";
+import { DEFAULT_MEMBER_MEMBERS } from "./member-numbers";
 
-const MEMBER_NUMBER_KEY = "gc_member_number";
-const REGISTERED_NUMBERS_KEY = "gc_registered_numbers";
+type Member = { number: string; name: string };
+type Customer = { name: string; phone: string; address: string; city: string; pincode: string };
+
+const MEMBER_SESSION_KEY = "gc_member_session";
+const MEMBER_LIST_KEY = "gc_members";
+const CUSTOMER_SESSION_KEY = "gc_customer_session";
+const CUSTOMER_LIST_KEY = "gc_customers";
 
 type MemberContextType = {
-  memberNumber: string;
+  member: Member | null;
+  members: Member[];
   isMember: boolean;
-  registeredNumbers: string[];
-  loginNumber: (number: string) => boolean;
-  addMemberNumber: (number: string) => boolean;
+  loginMember: (number: string) => boolean;
+  addMember: (number: string, name: string) => boolean;
   logoutMember: () => void;
-  isNumberRegistered: (number: string) => boolean;
-  description: string;
+  memberName: string;
+  customer: Customer | null;
+  registerCustomer: (customer: Customer) => boolean;
+  loginCustomer: (phone: string) => boolean;
+  logoutCustomer: () => void;
+  customerList: Customer[];
 };
 
 const MemberContext = createContext<MemberContextType | undefined>(undefined);
 
 export function MemberProvider({ children }: { children: React.ReactNode }) {
-  const [memberNumber, setMemberNumberState] = useState<string>("");
-  const [registeredNumbers, setRegisteredNumbers] = useState<string[]>([]);
+  const [member, setMember] = useState<Member | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customerList, setCustomerList] = useState<Customer[]>([]);
 
   useEffect(() => {
-    const savedMember = localStorage.getItem(MEMBER_NUMBER_KEY);
-    const savedRegistered = localStorage.getItem(REGISTERED_NUMBERS_KEY);
-    if (savedMember) setMemberNumberState(savedMember);
-    if (savedRegistered) {
+    const savedMemberSession = localStorage.getItem(MEMBER_SESSION_KEY);
+    const savedMembers = localStorage.getItem(MEMBER_LIST_KEY);
+    const savedCustomerSession = localStorage.getItem(CUSTOMER_SESSION_KEY);
+    const savedCustomers = localStorage.getItem(CUSTOMER_LIST_KEY);
+
+    if (savedMembers) {
       try {
-        const parsed = JSON.parse(savedRegistered) as string[];
-        setRegisteredNumbers(parsed);
+        const parsed = JSON.parse(savedMembers) as Member[];
+        setMembers(parsed);
       } catch {
-        setRegisteredNumbers(DEFAULT_MEMBER_NUMBERS);
+        setMembers(DEFAULT_MEMBER_MEMBERS);
       }
     } else {
-      setRegisteredNumbers(DEFAULT_MEMBER_NUMBERS);
+      setMembers(DEFAULT_MEMBER_MEMBERS);
+    }
+
+    if (savedMemberSession) {
+      try {
+        const parsed = JSON.parse(savedMemberSession) as Member;
+        setMember(parsed);
+      } catch {
+        setMember(null);
+      }
+    }
+
+    if (savedCustomers) {
+      try {
+        const parsed = JSON.parse(savedCustomers) as Customer[];
+        setCustomerList(parsed);
+      } catch {
+        setCustomerList([]);
+      }
+    }
+
+    if (savedCustomerSession) {
+      try {
+        const parsed = JSON.parse(savedCustomerSession) as Customer;
+        setCustomer(parsed);
+      } catch {
+        setCustomer(null);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(MEMBER_NUMBER_KEY, memberNumber);
-  }, [memberNumber]);
+  const persistMembers = (next: Member[]) => {
+    setMembers(next);
+    localStorage.setItem(MEMBER_LIST_KEY, JSON.stringify(next));
+  };
 
-  useEffect(() => {
-    localStorage.setItem(REGISTERED_NUMBERS_KEY, JSON.stringify(registeredNumbers));
-  }, [registeredNumbers]);
+  const persistMemberSession = (next: Member | null) => {
+    setMember(next);
+    if (next) localStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(next));
+    else localStorage.removeItem(MEMBER_SESSION_KEY);
+  };
 
-  const loginNumber = (number: string) => {
+  const persistCustomers = (next: Customer[]) => {
+    setCustomerList(next);
+    localStorage.setItem(CUSTOMER_LIST_KEY, JSON.stringify(next));
+  };
+
+  const persistCustomerSession = (next: Customer | null) => {
+    setCustomer(next);
+    if (next) localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(next));
+    else localStorage.removeItem(CUSTOMER_SESSION_KEY);
+  };
+
+  const loginMember = (number: string) => {
     const cleaned = number.trim();
     if (!cleaned) return false;
-    if (!registeredNumbers.includes(cleaned)) return false;
-    setMemberNumberState(cleaned);
-    localStorage.setItem(MEMBER_NUMBER_KEY, cleaned);
+    const found = members.find((m) => m.number === cleaned);
+    if (!found) return false;
+    persistMemberSession(found);
     return true;
   };
 
-  const addMemberNumber = (number: string) => {
-    const cleaned = number.trim();
-    if (!cleaned) return false;
-    setRegisteredNumbers((prev) => {
-      if (prev.includes(cleaned)) return prev;
-      const next = [...prev, cleaned];
-      localStorage.setItem(REGISTERED_NUMBERS_KEY, JSON.stringify(next));
-      return next;
-    });
+  const addMember = (number: string, name: string) => {
+    const cleanedNumber = number.trim();
+    const cleanedName = name.trim();
+    if (!cleanedNumber || !cleanedName) return false;
+    if (members.some((m) => m.number === cleanedNumber)) return false;
+    const next = [...members, { number: cleanedNumber, name: cleanedName }];
+    persistMembers(next);
     return true;
   };
 
   const logoutMember = () => {
-    setMemberNumberState("");
-    localStorage.removeItem(MEMBER_NUMBER_KEY);
+    persistMemberSession(null);
   };
 
-  const isNumberRegistered = (number: string) => registeredNumbers.includes(number.trim());
+  const registerCustomer = (data: Customer) => {
+    if (!data.name.trim() || !data.phone.trim()) return false;
+    const next = [...customerList.filter((c) => c.phone !== data.phone), data];
+    persistCustomers(next);
+    persistCustomerSession(data);
+    return true;
+  };
+
+  const loginCustomer = (phone: string) => {
+    const cleaned = phone.trim();
+    if (!cleaned) return false;
+    const found = customerList.find((c) => c.phone === cleaned);
+    if (!found) return false;
+    persistCustomerSession(found);
+    return true;
+  };
+
+  const logoutCustomer = () => {
+    persistCustomerSession(null);
+  };
 
   const value = useMemo(() => ({
-    memberNumber,
-    isMember: memberNumber.trim().length > 0 && registeredNumbers.includes(memberNumber.trim()),
-    registeredNumbers,
-    loginNumber,
-    addMemberNumber,
+    member,
+    members,
+    isMember: member !== null,
+    loginMember,
+    addMember,
     logoutMember,
-    isNumberRegistered,
-    description:
-      memberNumber.trim().length > 0 && registeredNumbers.includes(memberNumber.trim())
-        ? "Registered member: offers enabled"
-        : "Not registered: login with your shop membership number",
-  }), [memberNumber, registeredNumbers]);
+    memberName: member?.name ?? "",
+    customer,
+    registerCustomer,
+    loginCustomer,
+    logoutCustomer,
+    customerList,
+  }), [member, members, customer, customerList]);
 
   return <MemberContext.Provider value={value}>{children}</MemberContext.Provider>;
 }

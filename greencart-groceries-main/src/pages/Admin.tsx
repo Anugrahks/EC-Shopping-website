@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image as ImageIcon } from "lucide-react";
+import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image as ImageIcon, User } from "lucide-react";
 import { toast } from "sonner";
 
 const ORDERS_KEY = "gc_orders";
@@ -25,10 +25,11 @@ type SavedOrder = {
 };
 
 const Admin = () => {
-  const { registeredNumbers, addMemberNumber } = useMember();
+  const { members, addMember } = useMember();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [newMemberNumber, setNewMemberNumber] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
   const [newCategory, setNewCategory] = useState({ name: "", icon: "", image: "" });
   const [productsList, setProductsList] = useState<Product[]>(initialProducts);
   const [categoriesList, setCategoriesList] = useState(initialCategories);
@@ -90,6 +91,7 @@ const Admin = () => {
     { label: "Products", value: productsList.length, icon: Package },
     { label: "Categories", value: categoriesList.length, icon: Tag },
     { label: "Today's Offers", value: productsList.filter((p) => p.isTodayOffer).length, icon: ShoppingBag },
+    { label: "Members", value: members.length, icon: User },
   ];
 
   if (!isLoggedIn) {
@@ -305,41 +307,47 @@ const Admin = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-xl font-bold">Member Management</h2>
-                  <p className="text-sm text-muted-foreground">Add membership numbers that can login for VIP prices.</p>
+                  <p className="text-sm text-muted-foreground">Add members (number + name) for VIP offers.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto">
                   <Input
-                    placeholder="New member number"
-                    className="w-48"
+                    placeholder="Number"
                     value={newMemberNumber}
                     onChange={(e) => setNewMemberNumber(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Name"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
                   />
                   <Button
                     size="sm"
                     onClick={() => {
-                      const added = addMemberNumber(newMemberNumber);
+                      const added = addMember(newMemberNumber, newMemberName);
                       if (added) {
-                        toast.success(`Added member ${newMemberNumber}`);
+                        toast.success(`Added member ${newMemberName}`);
                         setNewMemberNumber("");
+                        setNewMemberName("");
                       } else {
-                        toast.error("Enter a valid member number");
+                        toast.error("Enter unique number and name");
                       }
                     }}
                   >
-                    Add Number
+                    Add Member
                   </Button>
                 </div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                {registeredNumbers.length === 0 ? (
-                  <Card className="p-3 text-center text-muted-foreground">No member numbers found.</Card>
+                {members.length === 0 ? (
+                  <Card className="p-3 text-center text-muted-foreground">No members found.</Card>
                 ) : (
-                  registeredNumbers.map((num) => (
-                    <Card key={num} className="p-3 flex items-center justify-between">
+                  members.map((member) => (
+                    <Card key={member.number} className="p-3 flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{num}</p>
-                        <p className="text-xs text-muted-foreground">VIP login enabled</p>
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-xs text-muted-foreground">{member.number}</p>
                       </div>
+                      <span className="text-xs text-success">VIP</span>
                     </Card>
                   ))
                 )}

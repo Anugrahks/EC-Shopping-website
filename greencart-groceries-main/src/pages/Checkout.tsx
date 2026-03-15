@@ -16,7 +16,7 @@ const ORDERS_KEY = "gc_orders";
 
 const Checkout = () => {
   const { items, clearCart } = useCart();
-  const { isMember } = useMember();
+  const { isMember, memberName } = useMember();
   const navigate = useNavigate();
   const [placed, setPlaced] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
@@ -83,7 +83,12 @@ const Checkout = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Checkout</h1>
+        <h1 className="text-3xl font-bold mb-3">Checkout</h1>
+        {isMember && (
+          <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-800">
+            You have an EC Shopping Card ({memberName}). Enjoy VIP offers at checkout!
+          </div>
+        )}
         <div className="grid lg:grid-cols-3 gap-8">
           <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
             <Card className="p-6 space-y-4">

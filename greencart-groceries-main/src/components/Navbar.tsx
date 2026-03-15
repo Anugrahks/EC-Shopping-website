@@ -11,8 +11,23 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [numberInput, setNumberInput] = useState("");
+  const [userPhoneInput, setUserPhoneInput] = useState("");
+  const [userNameInput, setUserNameInput] = useState("");
+  const [userAddressInput, setUserAddressInput] = useState("");
+  const [userCityInput, setUserCityInput] = useState("");
+  const [userPincodeInput, setUserPincodeInput] = useState("");
   const { totalItems } = useCart();
-  const { memberNumber, isMember, description, loginNumber, logoutMember } = useMember();
+  const {
+    member,
+    isMember,
+    memberName,
+    loginMember,
+    logoutMember,
+    customer,
+    registerCustomer,
+    loginCustomer,
+    logoutCustomer,
+  } = useMember();
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
   const handleSearch = (e: React.FormEvent) => {
@@ -54,8 +69,9 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 rounded-full border border-muted/40 bg-muted/10 px-3 py-1 text-xs text-muted-foreground">
-            {isMember ? `EC Shopping Card • ${memberNumber}` : "No membership"}
+            {isMember ? `EC Shopping Card • ${memberName}` : customer ? `Welcome ${customer.name}` : "Not signed in"}
             {isMember && <button onClick={logoutMember} className="underline text-xs ml-2">Logout</button>}
+            {!isMember && customer && <button onClick={logoutCustomer} className="underline text-xs ml-2">Logout</button>}
           </div>
           <Link to="/cart" className="relative">
             <ShoppingCart className="h-6 w-6 text-foreground hover:text-primary transition-colors" />
@@ -74,21 +90,78 @@ export function Navbar() {
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
-          <div className="hidden md:flex items-center gap-2">
-            <Input
-              placeholder="Member number"
-              className="w-28"
-              value={numberInput}
-              onChange={(e) => setNumberInput(e.target.value)}
-            />
-            <Button size="sm" onClick={() => {
-              const ok = loginNumber(numberInput);
-              setMessage(ok ? "Logged in successfully" : "Number not registered");
-            }}>
-              Login
-            </Button>
+          <div className="hidden md:flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Member number"
+                className="w-28"
+                value={numberInput}
+                onChange={(e) => setNumberInput(e.target.value)}
+              />
+              <Button size="sm" onClick={() => {
+                const ok = loginMember(numberInput);
+                setMessage(ok ? "Member login successful" : "Member not found");
+              }}>
+                Member Login
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Customer phone"
+                className="w-28"
+                value={userPhoneInput}
+                onChange={(e) => setUserPhoneInput(e.target.value)}
+              />
+              <Button size="sm" onClick={() => {
+                const ok = loginCustomer(userPhoneInput);
+                setMessage(ok ? "Customer logged in" : "Customer not registered");
+              }}>
+                Customer Login
+              </Button>
+            </div>
           </div>
-          <div className="hidden md:flex text-xs text-muted-foreground">{message || description}</div>
+          <div className="hidden md:flex flex-col gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Name"
+                className="w-24"
+                value={userNameInput}
+                onChange={(e) => setUserNameInput(e.target.value)}
+              />
+              <Input
+                placeholder="Address"
+                className="w-24"
+                value={userAddressInput}
+                onChange={(e) => setUserAddressInput(e.target.value)}
+              />
+              <Input
+                placeholder="City"
+                className="w-20"
+                value={userCityInput}
+                onChange={(e) => setUserCityInput(e.target.value)}
+              />
+              <Input
+                placeholder="Pincode"
+                className="w-20"
+                value={userPincodeInput}
+                onChange={(e) => setUserPincodeInput(e.target.value)}
+              />
+            </div>
+            <Button size="sm" onClick={() => {
+              const data = {
+                name: userNameInput,
+                phone: userPhoneInput,
+                address: userAddressInput,
+                city: userCityInput,
+                pincode: userPincodeInput,
+              };
+              const ok = registerCustomer(data);
+              setMessage(ok ? "Customer registered" : "Fill name and phone");
+            }}>
+              Register Customer
+            </Button>
+            <div>{message}</div>
+          </div>
         </div>
       </div>
       {mobileMenuOpen && (
