@@ -11,21 +11,13 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [numberInput, setNumberInput] = useState("");
-  const [userPhoneInput, setUserPhoneInput] = useState("");
-  const [userNameInput, setUserNameInput] = useState("");
-  const [userAddressInput, setUserAddressInput] = useState("");
-  const [userCityInput, setUserCityInput] = useState("");
-  const [userPincodeInput, setUserPincodeInput] = useState("");
   const { totalItems } = useCart();
   const {
     member,
     isMember,
     memberName,
-    loginMember,
     logoutMember,
     customer,
-    registerCustomer,
-    loginCustomer,
     logoutCustomer,
   } = useMember();
   const [message, setMessage] = useState("");
@@ -90,77 +82,9 @@ export function Navbar() {
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
-          <div className="hidden md:flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Member number"
-                className="w-28"
-                value={numberInput}
-                onChange={(e) => setNumberInput(e.target.value)}
-              />
-              <Button size="sm" onClick={() => {
-                const ok = loginMember(numberInput);
-                setMessage(ok ? "Member login successful" : "Member not found");
-              }}>
-                Member Login
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Customer phone"
-                className="w-28"
-                value={userPhoneInput}
-                onChange={(e) => setUserPhoneInput(e.target.value)}
-              />
-              <Button size="sm" onClick={() => {
-                const ok = loginCustomer(userPhoneInput);
-                setMessage(ok ? "Customer logged in" : "Customer not registered");
-              }}>
-                Customer Login
-              </Button>
-            </div>
-          </div>
-          <div className="hidden md:flex flex-col gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Name"
-                className="w-24"
-                value={userNameInput}
-                onChange={(e) => setUserNameInput(e.target.value)}
-              />
-              <Input
-                placeholder="Address"
-                className="w-24"
-                value={userAddressInput}
-                onChange={(e) => setUserAddressInput(e.target.value)}
-              />
-              <Input
-                placeholder="City"
-                className="w-20"
-                value={userCityInput}
-                onChange={(e) => setUserCityInput(e.target.value)}
-              />
-              <Input
-                placeholder="Pincode"
-                className="w-20"
-                value={userPincodeInput}
-                onChange={(e) => setUserPincodeInput(e.target.value)}
-              />
-            </div>
-            <Button size="sm" onClick={() => {
-              const data = {
-                name: userNameInput,
-                phone: userPhoneInput,
-                address: userAddressInput,
-                city: userCityInput,
-                pincode: userPincodeInput,
-              };
-              const ok = registerCustomer(data);
-              setMessage(ok ? "Customer registered" : "Fill name and phone");
-            }}>
-              Register Customer
-            </Button>
-            <div>{message}</div>
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="text-sm underline text-primary">Login / Register</Link>
+            <span className="hidden md:inline text-xs text-muted-foreground">{message || "Use login page for member/customer access"}</span>
           </div>
         </div>
       </div>
@@ -176,6 +100,7 @@ export function Navbar() {
             <Link to="/" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-primary">Home</Link>
             <Link to="/products" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-primary">Shop</Link>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-primary">About</Link>
+            <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-primary">Login / Register</Link>
           </div>
         </div>
       )}
