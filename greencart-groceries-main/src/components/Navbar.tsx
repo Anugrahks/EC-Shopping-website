@@ -80,7 +80,10 @@ export function Navbar() {
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
           <div className="flex items-center gap-2">
-            <Link to="/login" className="text-sm underline text-primary flex items-center gap-1"><LogIn className="h-4 w-4" />Login / Register</Link>
+            <Link to="/login" className="inline-flex items-center gap-1 rounded-full bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+              <LogIn className="h-4 w-4" />
+              Login / Register
+            </Link>
             <span className="hidden md:inline text-xs text-muted-foreground">{message || "Use login page for member/customer access"}</span>
           </div>
         </div>
