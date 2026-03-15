@@ -4,6 +4,11 @@ import { DEFAULT_MEMBER_MEMBERS } from "./member-numbers";
 type Member = { number: string; name: string };
 type Customer = { name: string; phone: string; address: string; city: string; pincode: string };
 
+// LocalStorage keys used by membership and customer flows.
+// - MEMBER_SESSION_KEY: currently logged-in member.
+// - MEMBER_LIST_KEY: admin-managed allowed member numbers.
+// - CUSTOMER_SESSION_KEY: currently logged-in customer.
+// - CUSTOMER_LIST_KEY: registered customer list.
 const MEMBER_SESSION_KEY = "gc_member_session";
 const MEMBER_LIST_KEY = "gc_members";
 const CUSTOMER_SESSION_KEY = "gc_customer_session";

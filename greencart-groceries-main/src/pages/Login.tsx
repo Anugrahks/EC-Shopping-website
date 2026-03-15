@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useMember } from "@/lib/member-context";
 import { toast } from "sonner";
+import { CreditCard, User, UserPlus, LogIn } from "lucide-react";
 
 const Login = () => {
   const { loginMember, registerCustomer, loginCustomer, isMember, memberName, customer } = useMember();
@@ -40,7 +41,8 @@ const Login = () => {
                 onChange={(e) => setMemberNumber(e.target.value)}
               />
               <Button
-                className="w-full"
+                className="w-full flex items-center justify-center gap-2"
+                variant="secondary"
                 onClick={() => {
                   const ok = loginMember(memberNumber);
                   if (ok) {
@@ -51,6 +53,7 @@ const Login = () => {
                   }
                 }}
               >
+                <CreditCard className="h-4 w-4" />
                 Member Login
               </Button>
             </div>
@@ -71,7 +74,8 @@ const Login = () => {
                 onChange={(e) => setCustomerPhone(e.target.value)}
               />
               <Button
-                className="w-full"
+                className="w-full flex items-center justify-center gap-2"
+                variant="secondary"
                 onClick={() => {
                   const ok = loginCustomer(customerPhone);
                   if (ok) {
@@ -82,6 +86,7 @@ const Login = () => {
                   }
                 }}
               >
+                <LogIn className="h-4 w-4" />
                 Customer Login
               </Button>
               <div className="border-t pt-3" />
@@ -92,7 +97,8 @@ const Login = () => {
               <Input placeholder="City" value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} />
               <Input placeholder="Pincode" value={customerPincode} onChange={(e) => setCustomerPincode(e.target.value)} />
               <Button
-                className="w-full"
+                className="w-full flex items-center justify-center gap-2"
+                variant="default"
                 onClick={() => {
                   const ok = registerCustomer({
                     name: customerName,
@@ -109,6 +115,7 @@ const Login = () => {
                   }
                 }}
               >
+                <UserPlus className="h-4 w-4" />
                 Register Customer
               </Button>
             </div>
