@@ -1,62 +1,42 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, Search } from "lucide-react";
-import { categories } from "@/lib/data";
+import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { categories } from "@/lib/data";
+import { ShoppingCart } from "lucide-react";
 
 export function HeroBanner() {
   const [query, setQuery] = useState("");
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 to-green-600 text-white mx-4 mt-4 shadow-lg">
-      <div className="px-4 py-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm opacity-90">Morning, Hannah</p>
-            <p className="text-xs opacity-90">What would you buy today?</p>
+    <section className="bg-[#f0fdf4] py-6">
+      <div className="container mx-auto px-4">
+        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-md">
+          <div className="grid lg:grid-cols-2 gap-4 items-center">
+            <div>
+                            <div className="inline-flex flex-wrap items-center gap-2 mb-3 text-xs font-semibold">
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">EC Shopping Center</span>
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">Claimed</span>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-bold text-slate-900 leading-tight">Corporate Companies</h1>
+              <div className="mt-1 text-slate-600 font-medium">3.6 • 7 Ratings • Panniyur, Kannur</div>
+              <p className="mt-3 text-sm text-slate-600 max-w-xl">EC Shopping is a trusted grocery marketplace for fresh produce and daily essentials.</p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button asChild variant="default" className="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-700"><Link to="/products">Shop Now</Link></Button>
+                <button className="rounded-full border border-emerald-600 text-emerald-600 px-4 py-2 text-sm">View More</button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {categories.slice(0, 6).map((cat) => (
+                  <Link key={cat.id} to={`/products?category=${encodeURIComponent(cat.name)}`} className="rounded-full border border-emerald-200 px-2 py-1 text-xs text-emerald-700 font-medium text-center">{cat.name}</Link>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl overflow-hidden">
+              <img src="https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=900" alt="Fresh groceries" className="w-full h-56 md:h-80 object-cover rounded-xl" />
+            </div>
           </div>
-          <button className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center ring-1 ring-white/40">
-            <span>👤</span>
-          </button>
-        </div>
-        <div className="mt-3">
-          <h1 className="text-2xl font-bold leading-tight">Enjoy The Special Offer Up To 30%</h1>
-          <p className="text-xs opacity-90 mt-1">From 14th June, 2025</p>
-        </div>
-
-        <div className="mt-4 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search vegetables, fruits and more"
-            className="pl-10 pr-3 bg-white/10 text-white placeholder:text-white/70 border border-white/20"
-          />
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2 overflow-x-auto pb-1">
-          {categories.slice(0, 6).map((cat) => (
-            <Link
-              key={cat.id}
-              to={`/products?category=${encodeURIComponent(cat.name)}`}
-              className="flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-xs font-medium"
-            >
-              <span>{cat.icon}</span>
-              <span>{cat.name}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 border-t border-white/20 px-4 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold">Fresh Products</p>
-            <p className="text-xs opacity-80">Best selected items for today</p>
-          </div>
-          <button className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-medium">
-            <ShoppingCart className="h-3 w-3" /> View cart
-          </button>
         </div>
       </div>
     </section>
