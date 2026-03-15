@@ -11,11 +11,26 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
 
+const ORDERS_KEY = "gc_orders";
+
 const Checkout = () => {
   const { items, totalPrice, clearCart } = useCart();
   const navigate = useNavigate();
   const [placed, setPlaced] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
+
+  const saveOrder = () => {
+    const existing = localStorage.getItem(ORDERS_KEY);
+    const orders = existing ? JSON.parse(existing) : [];
+    const newOrder = {
+      id: `${Date.now()}`,
+      name: form.name,
+      total: totalPrice,
+      date: new Date().toLocaleString(),
+      items: items.map((item) => ({ productName: item.product.name, quantity: item.quantity, amount: (item.product.discountPrice || item.product.price) * item.quantity })),
+    };
+    localStorage.setItem(ORDERS_KEY, JSON.stringify([newOrder, ...orders]));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +38,7 @@ const Checkout = () => {
       toast.error("Please fill all fields");
       return;
     }
+    saveOrder();
     setPlaced(true);
     clearCart();
     toast.success("Order placed successfully!");
