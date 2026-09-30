@@ -28,7 +28,7 @@ export function Navbar() {
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <div className="flex items-center gap-2 text-xl font-bold">
             <span className="text-2xl">🥬</span>
-            <span>VegShop</span>
+            <span>EC SHOPPING</span>
           </div>
 
           <div className="hidden lg:flex flex-1 justify-center px-2">

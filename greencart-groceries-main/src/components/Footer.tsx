@@ -8,7 +8,7 @@ export function Footer() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🥬</span>
-              <span className="text-xl font-bold">Green Shop</span>
+              <span className="text-xl font-bold">EC SHOPPING</span>
             </div>
             <p className="text-sm opacity-70">
               Fresh grocery delivery at your doorstep. Quality products at best prices.
@@ -37,12 +37,12 @@ export function Footer() {
             <div className="flex flex-col gap-2 text-sm opacity-70">
               <p>📞 +91 98765 43210</p>
               <p>📧 support@greenshop.in</p>
-              <p>📍 Mumbai, Maharashtra, India</p>
+              <p>📍 Poovam, Kannur, Kerala, India</p>
             </div>
           </div>
         </div>
         <div className="border-t border-background/20 mt-8 pt-6 text-center text-sm opacity-60">
-          © 2026 Green Shop. All rights reserved.
+          © 2026 EC SHOPPING. All rights reserved.
         </div>
       </div>
     </footer>

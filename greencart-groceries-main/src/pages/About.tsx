@@ -5,7 +5,7 @@ const About = () => (
   <div className="min-h-screen bg-background">
     <Navbar />
     <div className="container mx-auto px-4 py-16 max-w-3xl space-y-6">
-      <h1 className="text-4xl font-bold text-center">About Green Shop</h1>
+      <h1 className="text-4xl font-bold text-center">About EC SHOPPING</h1>
       <p className="text-muted-foreground text-center text-lg">
         Your trusted online grocery store delivering fresh products to your doorstep across India.
       </p>
