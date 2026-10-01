@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useMember } from "@/lib/member-context";
-import { buildOrderWhatsAppLink } from "@/lib/whatsapp";
 import { CheckCircle, MapPin } from "lucide-react";
 import type { CartItem } from "@/lib/data";
 
@@ -25,6 +24,7 @@ const Checkout = () => {
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
   const [sharedLocation, setSharedLocation] = useState<SharedLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!customer) return;
@@ -44,11 +44,11 @@ const Checkout = () => {
 
   const totalVipPrice = items.reduce((sum, item) => sum + computeItemPrice(item), 0);
 
-  const saveOrder = () => {
+  const saveOrder = (orderId: string) => {
     const existing = localStorage.getItem(ORDERS_KEY);
     const orders = existing ? JSON.parse(existing) : [];
     const newOrder = {
-      id: `${Date.now()}`,
+      id: orderId,
       name: form.name,
       phone: form.phone,
       deliveryAddress: [form.address, form.city, form.pincode].filter(Boolean).join(", "),
@@ -99,7 +99,7 @@ const Checkout = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
       toast.error("Please fill all fields");
@@ -113,22 +113,47 @@ const Checkout = () => {
       toast.error("Enter a valid 6-digit Indian pincode");
       return;
     }
-    const newOrder = saveOrder();
-    const whatsappLink = buildOrderWhatsAppLink({
-      customerName: newOrder.name,
-      customerPhone: newOrder.phone,
-      deliveryAddress: newOrder.deliveryAddress,
-      total: newOrder.total,
-      date: newOrder.date,
-      items: newOrder.items,
-      deliveryLocation: newOrder.deliveryLocation,
-    });
+    if (isSubmitting) return;
 
-    window.open(whatsappLink, "_blank", "noopener,noreferrer");
+    setIsSubmitting(true);
+    try {
+      const deliveryAddress = [form.address, form.city, form.pincode].filter(Boolean).join(", ");
+      const orderResponse = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: form.name.trim(),
+          customerPhone: form.phone.trim(),
+          deliveryAddress,
+          total: totalVipPrice,
+          items: items.map((item) => {
+            const base = item.product.discountPrice || item.product.price;
+            const amount = isMember && item.product.isTodayOffer
+              ? Math.round(base * 0.9) * item.quantity
+              : base * item.quantity;
+            return { productName: item.product.name, quantity: item.quantity, amount };
+          }),
+          deliveryLocation: sharedLocation,
+        }),
+      });
+      const result = await orderResponse.json();
+      if (!orderResponse.ok || !result.success || typeof result.orderId !== "string") {
+        throw new Error(result.message || "We could not send your order to the shop. Please try again.");
+      }
 
-    setPlaced(true);
-    clearCart();
-    toast.success("Order placed successfully! A WhatsApp alert has been opened for the company.");
+      try {
+        saveOrder(result.orderId);
+      } catch {
+        toast.error("Your order was sent to the shop, but could not be saved on this device.");
+      }
+      setPlaced(true);
+      clearCart();
+      toast.success("Order placed successfully! The shop has been notified.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not place your order. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (placed) {
@@ -215,7 +240,9 @@ const Checkout = () => {
                 </div>
               </div>
             </Card>
-            <Button type="submit" size="lg" className="w-full rounded-full">Place Order — ₹{totalVipPrice}</Button>
+            <Button type="submit" size="lg" className="w-full rounded-full" disabled={isSubmitting}>
+              {isSubmitting ? "Sending order…" : `Place Order — ₹${totalVipPrice}`}
+            </Button>
           </form>
           <Card className="p-6 h-fit space-y-4">
             <h3 className="text-lg font-bold">Order Summary</h3>

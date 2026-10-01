@@ -68,8 +68,23 @@ This project is built with:
 3. Connect your GitHub repo, choose branch `main`.
 4. Set build command: `npm run build`.
 5. Set publish directory: `dist`.
-6. Add environment variables (if needed). For the local API proxy this is not needed.
+6. Configure the WhatsApp Cloud API variables below before accepting orders.
 7. Deploy. Your site will be available at `https://<project>.pages.dev`.
+
+#### WhatsApp order notifications
+
+Checkout sends orders from the backend directly to the shop's WhatsApp Business number; it does not open WhatsApp on the customer's device. To enable delivery:
+
+1. Set up the WhatsApp Business Platform Cloud API and create an approved `new_order_notification` message template in `en_US`, with one body text parameter (for example, `New order received:\n{{1}}`).
+2. In Cloudflare Pages > `ec-shopping-website` > Settings > Variables and Secrets, add these bindings for the production environment (and preview, if required):
+	- `WHATSAPP_ACCESS_TOKEN` — secret access token for the WhatsApp Business account; never add this as a `VITE_` variable.
+	- `WHATSAPP_PHONE_NUMBER_ID` — WhatsApp Cloud API sender phone-number ID.
+	- `WHATSAPP_ADMIN_PHONE_NUMBER` — recipient shop number in international format, digits only (for example, `918078312105`).
+	- `WHATSAPP_ORDER_TEMPLATE_NAME` — approved template name, default `new_order_notification`.
+	- `WHATSAPP_TEMPLATE_LANGUAGE` — approved template language code, default `en_US`.
+3. Save the settings and allow Cloudflare Pages to redeploy. The checkout shows an error and keeps the cart if required WhatsApp settings are missing or the notification fails.
+
+For local development, copy `.env.example` to `.env` and provide the WhatsApp credentials. Export the values into the environment used to start `npm run dev:full`; the Vite frontend proxies `/api` to the local Node backend.
 
 ### Verify API routes
 Your app calls:

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { products, categories, testimonials } from "./data.js";
+import { sendWhatsAppOrder } from "../functions/lib/whatsapp-order.js";
 
 const app = express();
 app.use(cors());
@@ -24,15 +25,9 @@ app.get("/api/testimonials", (req, res) => {
   res.json(testimonials);
 });
 
-app.post("/api/checkout", (req, res) => {
-  const { items, total } = req.body;
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ success: false, message: "Cart is empty" });
-  }
-
-  // This is demo only (no real orders stored here).
-  const orderId = `order_${Date.now()}`;
-  res.json({ success: true, orderId, total });
+app.post("/api/checkout", async (req, res) => {
+  const result = await sendWhatsAppOrder(req.body, process.env);
+  res.status(result.status).json(result.body);
 });
 
 app.get("/", (req, res) => {
