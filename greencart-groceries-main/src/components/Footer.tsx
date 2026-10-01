@@ -1,6 +1,16 @@
 import { Link } from "react-router-dom";
+import { useFooterContacts } from "@/lib/footer-contacts";
 
 export function Footer() {
+  const contacts = useFooterContacts();
+
+  const getContactHref = (contact: { label: string; value: string }) => {
+    const label = contact.label.toLowerCase();
+    if (label.includes("email")) return `mailto:${contact.value}`;
+    if (label.includes("phone") || label.includes("call")) return `tel:${contact.value.replace(/[^+\d]/g, "")}`;
+    return undefined;
+  };
+
   return (
     <footer className="bg-foreground text-background mt-10">
       <div className="container mx-auto px-4 py-12">
@@ -35,9 +45,13 @@ export function Footer() {
           <div className="space-y-3">
             <h2 className="font-semibold">Contact Us</h2>
             <div className="flex flex-col gap-2 text-sm opacity-70">
-              <p>📞 +91 98765 43210</p>
-              <p>📧 support@greenshop.in</p>
-              <p>📍 Poovam, Kannur, Kerala, India</p>
+              {contacts.map((contact) => {
+                const href = getContactHref(contact);
+                const content = <><span aria-hidden="true">{contact.icon || "•"}</span> <span>{contact.value}</span></>;
+                return href
+                  ? <a key={contact.id} href={href} className="flex items-start gap-2 hover:opacity-100"><span>{content}</span></a>
+                  : <p key={contact.id} className="flex items-start gap-2"><span>{content}</span></p>;
+              })}
             </div>
           </div>
         </div>

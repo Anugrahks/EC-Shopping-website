@@ -17,6 +17,7 @@ import { TODAY_OFFERS_BANNER_KEY, getTodayOffersBanners, type TodayOffersBanner 
 import { getOrderReport, type OrderStatus } from "@/lib/order-report";
 import { slugify } from "@/lib/slug";
 import { getProductVariants } from "@/lib/product-variants";
+import { FOOTER_CONTACTS_STORAGE_KEY, getFooterContacts, type FooterContact } from "@/lib/footer-contacts";
 
 const ORDERS_KEY = "gc_orders";
 const CATEGORIES_KEY = "gc_categories";
@@ -33,6 +34,14 @@ type SavedOrder = {
   status?: OrderStatus;
   deliveryLocation?: { latitude: number; longitude: number; accuracy: number } | null;
   items: Array<{ productName: string; quantity: number; amount: number }>;
+};
+
+type ProductVariantFormRow = {
+  id: string;
+  unit: string;
+  price: string;
+  discountPrice: string;
+  stock: string;
 };
 
 async function saveSharedCatalogWithToken(endpoint: string, value: unknown, token: string) {
@@ -58,10 +67,11 @@ const Admin = () => {
   const [productsList, setProductsList] = useState<Product[]>(initialProducts);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", category: "", price: "", discountPrice: "", stock: "", unit: "", variantOptions: "", image: "", description: "" });
+  const [productForm, setProductForm] = useState({ name: "", category: "", price: "", discountPrice: "", stock: "", unit: "", variantOptions: [] as ProductVariantFormRow[], image: "", description: "" });
   const [categoriesList, setCategoriesList] = useState(initialCategories);
   const [orders, setOrders] = useState<SavedOrder[]>([]);
   const [offersBanners, setOffersBanners] = useState<TodayOffersBanner[]>(getTodayOffersBanners);
+  const [footerContacts, setFooterContacts] = useState<FooterContact[]>(getFooterContacts);
 
   useEffect(() => {
     const storedOrders = localStorage.getItem(ORDERS_KEY);
@@ -75,10 +85,11 @@ const Admin = () => {
     let cancelled = false;
     const loadCatalog = async () => {
       try {
-        const [productsResponse, categoriesResponse, bannersResponse] = await Promise.all([
+        const [productsResponse, categoriesResponse, bannersResponse, contactsResponse] = await Promise.all([
           fetch("/api/products", { cache: "no-store" }),
           fetch("/api/categories", { cache: "no-store" }),
           fetch("/api/today-offers-banners", { cache: "no-store" }),
+          fetch("/api/footer-contacts", { cache: "no-store" }),
         ]);
         if (!productsResponse.ok || !categoriesResponse.ok) throw new Error("Could not load the shared catalog.");
         const [remoteProducts, remoteCategories] = await Promise.all([productsResponse.json(), categoriesResponse.json()]);
@@ -88,6 +99,13 @@ const Admin = () => {
         const categoriesInitialized = categoriesResponse.headers.get("X-Catalog-Initialized") === "true";
         setSharedCatalogReady(productsResponse.headers.get("X-Catalog-Storage") === "configured" && categoriesResponse.headers.get("X-Catalog-Storage") === "configured");
         setSharedBannersReady(bannersResponse.headers.get("X-Catalog-Storage") === "configured");
+        if (contactsResponse.headers.get("X-Catalog-Storage") === "configured" && contactsResponse.headers.get("X-Catalog-Initialized") === "true") {
+          const remoteContacts = await contactsResponse.json() as FooterContact[];
+          if (Array.isArray(remoteContacts)) {
+            setFooterContacts(remoteContacts);
+            localStorage.setItem(FOOTER_CONTACTS_STORAGE_KEY, JSON.stringify(remoteContacts));
+          }
+        }
         const nextProducts = !productsInitialized && legacyProducts ? JSON.parse(legacyProducts) : remoteProducts;
         const nextCategories = !categoriesInitialized && legacyCategories ? JSON.parse(legacyCategories) : remoteCategories;
         if (cancelled) return;
@@ -146,10 +164,11 @@ const Admin = () => {
       setIsLoggedIn(true);
       setPassword("");
       try {
-        const [productsResponse, categoriesResponse, bannersResponse] = await Promise.all([
+        const [productsResponse, categoriesResponse, bannersResponse, contactsResponse] = await Promise.all([
           fetch("/api/products", { cache: "no-store" }),
           fetch("/api/categories", { cache: "no-store" }),
           fetch("/api/today-offers-banners", { cache: "no-store" }),
+          fetch("/api/footer-contacts", { cache: "no-store" }),
         ]);
         const catalogReady = productsResponse.headers.get("X-Catalog-Storage") === "configured" && categoriesResponse.headers.get("X-Catalog-Storage") === "configured";
         setSharedCatalogReady(catalogReady);
@@ -169,18 +188,25 @@ const Admin = () => {
           const nextBanners = bannersInitialized
             ? remoteBanners
             : getTodayOffersBanners();
+          const contactsInitialized = contactsResponse.headers.get("X-Catalog-Initialized") === "true";
+          const nextContacts = contactsInitialized
+            ? await contactsResponse.json() as FooterContact[]
+            : getFooterContacts();
           await Promise.all([
             saveSharedCatalogWithToken("/api/admin/products", nextProducts, result.token),
             saveSharedCatalogWithToken("/api/admin/categories", nextCategories, result.token),
             saveSharedCatalogWithToken("/api/admin/today-offers-banners", nextBanners, result.token),
+            saveSharedCatalogWithToken("/api/admin/footer-contacts", nextContacts, result.token),
           ]);
           setProductsList(nextProducts);
           setCategoriesList(nextCategories);
           setOffersBanners(nextBanners);
+          setFooterContacts(nextContacts);
           localStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
           localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
           localStorage.setItem(TODAY_OFFERS_BANNER_KEY, JSON.stringify(nextBanners));
-          toast.success("Signed in and synced this device's catalog and banners across devices.");
+          localStorage.setItem(FOOTER_CONTACTS_STORAGE_KEY, JSON.stringify(nextContacts));
+          toast.success("Signed in and synced this device's catalog, banners, and contacts across devices.");
         }
         if (!catalogReady) throw new Error("Cloudflare KV is not bound yet. Add a CATALOG KV binding and ADMIN_PASSWORD secret to enable sharing across devices.");
       } catch (error) {
@@ -201,10 +227,16 @@ const Admin = () => {
       discountPrice: product.discountPrice ? String(product.discountPrice) : "",
       stock: String(product.stock),
       unit: product.unit,
-      variantOptions: (product.variants ?? []).map((variant) => `${variant.unit} | ${variant.price} | ${variant.discountPrice ?? ""} | ${variant.stock}`).join("\n"),
+      variantOptions: (product.variants ?? []).map((variant) => ({
+        id: variant.id,
+        unit: variant.unit,
+        price: String(variant.price),
+        discountPrice: variant.discountPrice === undefined ? "" : String(variant.discountPrice),
+        stock: String(variant.stock),
+      })),
       image: product.image,
       description: product.description,
-    } : { name: "", category: defaultCategory, price: "", discountPrice: "", stock: "", unit: "", variantOptions: "", image: "", description: "" });
+    } : { name: "", category: defaultCategory, price: "", discountPrice: "", stock: "", unit: "", variantOptions: [], image: "", description: "" });
     setProductDialogOpen(true);
   };
 
@@ -335,6 +367,22 @@ const Admin = () => {
     toast.success("Offers banner removed from every device");
   };
 
+  const saveFooterContacts = async () => {
+    const validContacts = footerContacts.filter((contact) => contact.label.trim() && contact.value.trim());
+    if (validContacts.length !== footerContacts.length) {
+      toast.error("Every contact needs both a label and a value.");
+      return;
+    }
+    try {
+      await saveSharedCatalog("/api/admin/footer-contacts", validContacts);
+      setFooterContacts(validContacts);
+      localStorage.setItem(FOOTER_CONTACTS_STORAGE_KEY, JSON.stringify(validContacts));
+      toast.success("Footer contact details saved and synced to all devices.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the contact details.");
+    }
+  };
+
   const saveProduct = () => {
     const price = Number(productForm.price);
     const stock = Number(productForm.stock);
@@ -347,15 +395,14 @@ const Admin = () => {
       toast.error("Sale price must be greater than zero and below the regular price");
       return;
     }
-    const variantRows = productForm.variantOptions.split("\n").map((line) => line.trim()).filter(Boolean);
     const variants: ProductVariant[] = [];
-    for (const row of variantRows) {
-      const [unitValue, priceValue, saleValue, stockValue, ...extra] = row.split("|").map((part) => part.trim());
-      const variantPrice = Number(priceValue);
-      const variantStock = Number(stockValue);
-      const variantSalePrice = saleValue ? Number(saleValue) : undefined;
-      if (!unitValue || !stockValue || extra.length > 0 || !Number.isFinite(variantPrice) || variantPrice <= 0 || !Number.isInteger(variantStock) || variantStock < 0 || (variantSalePrice !== undefined && (!Number.isFinite(variantSalePrice) || variantSalePrice <= 0 || variantSalePrice >= variantPrice))) {
-        toast.error(`Invalid pack-size row: ${row}. Use size | price | sale price (optional) | stock.`);
+    for (const row of productForm.variantOptions) {
+      const unitValue = row.unit.trim();
+      const variantPrice = Number(row.price);
+      const variantStock = Number(row.stock);
+      const variantSalePrice = row.discountPrice.trim() ? Number(row.discountPrice) : undefined;
+      if (!unitValue || !row.price || !row.stock || !Number.isFinite(variantPrice) || variantPrice <= 0 || !Number.isInteger(variantStock) || variantStock < 0 || (variantSalePrice !== undefined && (!Number.isFinite(variantSalePrice) || variantSalePrice <= 0 || variantSalePrice >= variantPrice))) {
+        toast.error(`Complete the size, regular price, and stock for “${unitValue || "each pack"}”. Sale price is optional and must be lower than regular price.`);
         return;
       }
       const normalizedUnit = unitValue.toLocaleLowerCase();
@@ -537,9 +584,20 @@ const Admin = () => {
               <div className="space-y-2"><Label htmlFor="product-stock">Stock</Label><Input id="product-stock" type="number" min="0" step="1" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} /></div>
               <div className="space-y-2"><Label htmlFor="product-unit">Unit</Label><Input id="product-unit" placeholder="e.g. 1kg" value={productForm.unit} onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })} /></div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="product-variants">Additional pack sizes (optional)</Label>
-                <Textarea id="product-variants" placeholder={"100 g | 18 | 15 | 40\n200 g | 34 | | 30\n500 g | 80 | | 20"} value={productForm.variantOptions} onChange={(event) => setProductForm({ ...productForm, variantOptions: event.target.value })} />
-                <p className="text-xs text-muted-foreground">One pack per line: size | regular price | sale price (optional) | stock. The main size and its price above remain available too. Enter accurate prices and stock for each size.</p>
+                <Label>Additional pack sizes (optional)</Label>
+                <p className="text-xs text-muted-foreground">Enter a separate size, regular price, optional sale price, and stock for each pack. The main size above remains available too.</p>
+                <div className="space-y-3">
+                  {productForm.variantOptions.map((variant, index) => (
+                    <div key={variant.id} className="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_auto] sm:items-end sm:p-2">
+                      <div className="space-y-1"><Label htmlFor={`variant-size-${variant.id}`}>Size / unit</Label><Input id={`variant-size-${variant.id}`} placeholder="100 g" value={variant.unit} onChange={(event) => setProductForm((current) => ({ ...current, variantOptions: current.variantOptions.map((item, itemIndex) => itemIndex === index ? { ...item, unit: event.target.value } : item) }))} /></div>
+                      <div className="space-y-1"><Label htmlFor={`variant-price-${variant.id}`}>Regular price (₹)</Label><Input id={`variant-price-${variant.id}`} type="number" min="0.01" step="0.01" placeholder="20" value={variant.price} onChange={(event) => setProductForm((current) => ({ ...current, variantOptions: current.variantOptions.map((item, itemIndex) => itemIndex === index ? { ...item, price: event.target.value } : item) }))} /></div>
+                      <div className="space-y-1"><Label htmlFor={`variant-sale-${variant.id}`}>Sale price (₹)</Label><Input id={`variant-sale-${variant.id}`} type="number" min="0.01" step="0.01" placeholder="Optional" value={variant.discountPrice} onChange={(event) => setProductForm((current) => ({ ...current, variantOptions: current.variantOptions.map((item, itemIndex) => itemIndex === index ? { ...item, discountPrice: event.target.value } : item) }))} /></div>
+                      <div className="space-y-1"><Label htmlFor={`variant-stock-${variant.id}`}>Stock</Label><Input id={`variant-stock-${variant.id}`} type="number" min="0" step="1" placeholder="40" value={variant.stock} onChange={(event) => setProductForm((current) => ({ ...current, variantOptions: current.variantOptions.map((item, itemIndex) => itemIndex === index ? { ...item, stock: event.target.value } : item) }))} /></div>
+                      <Button type="button" variant="outline" className="col-span-2 sm:col-span-1" aria-label={`Remove pack size ${index + 1}`} onClick={() => setProductForm((current) => ({ ...current, variantOptions: current.variantOptions.filter((_, itemIndex) => itemIndex !== index) }))}><Trash2 className="h-4 w-4" /><span className="sm:hidden">Remove pack size</span></Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setProductForm((current) => ({ ...current, variantOptions: [...current.variantOptions, { id: `variant-${Date.now()}`, unit: "", price: "", discountPrice: "", stock: "" }] }))}><Plus className="mr-1 h-4 w-4" /> Add pack size</Button>
+                </div>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="product-image">Upload product image</Label>
@@ -566,6 +624,7 @@ const Admin = () => {
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="banners">Banners</TabsTrigger>
+            <TabsTrigger value="contact">Contact</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
@@ -984,6 +1043,33 @@ const Admin = () => {
                   {offersBanners.length > 0 && <Button variant="outline" onClick={clearOffersBanner}>Remove all</Button>}
                   <Button onClick={saveOffersBanner}>Save Banners</Button>
                 </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contact">
+            <Card className="space-y-5 p-6">
+              <div>
+                <h2 className="text-xl font-bold">Footer Contact Details</h2>
+                <p className="text-sm text-muted-foreground">Edit the phone, email, address, or add extra contact methods. Saved details appear in the footer on every device.</p>
+              </div>
+              {!sharedCatalogReady && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                Shared Cloudflare catalog storage is not configured, so contact changes cannot sync to phones yet.
+              </div>}
+              <div className="space-y-3">
+                {footerContacts.map((contact, index) => (
+                  <div key={contact.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[5rem_minmax(0,1fr)_minmax(0,2fr)_auto]">
+                    <div className="space-y-1"><Label htmlFor={`contact-icon-${contact.id}`}>Icon</Label><Input id={`contact-icon-${contact.id}`} maxLength={16} value={contact.icon} onChange={(event) => setFooterContacts((current) => current.map((item) => item.id === contact.id ? { ...item, icon: event.target.value } : item))} /></div>
+                    <div className="space-y-1"><Label htmlFor={`contact-label-${contact.id}`}>Label</Label><Input id={`contact-label-${contact.id}`} maxLength={80} value={contact.label} placeholder="Phone, Email, Address..." onChange={(event) => setFooterContacts((current) => current.map((item) => item.id === contact.id ? { ...item, label: event.target.value } : item))} /></div>
+                    <div className="space-y-1"><Label htmlFor={`contact-value-${contact.id}`}>Details</Label><Input id={`contact-value-${contact.id}`} maxLength={300} value={contact.value} placeholder="Phone number, email, address, or link" onChange={(event) => setFooterContacts((current) => current.map((item) => item.id === contact.id ? { ...item, value: event.target.value } : item))} /></div>
+                    <Button type="button" variant="outline" className="self-end" aria-label={`Remove contact ${index + 1}`} onClick={() => setFooterContacts((current) => current.filter((item) => item.id !== contact.id))}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+                {footerContacts.length === 0 && <p className="rounded-lg bg-muted p-4 text-center text-sm text-muted-foreground">No footer contact details. Add some below.</p>}
+              </div>
+              <div className="flex flex-wrap justify-between gap-3 border-t pt-4">
+                <Button type="button" variant="outline" disabled={footerContacts.length >= 12} onClick={() => setFooterContacts((current) => [...current, { id: `contact-${Date.now()}`, label: "", value: "", icon: "•" }])}><Plus className="mr-1 h-4 w-4" /> Add contact detail</Button>
+                <Button type="button" onClick={() => void saveFooterContacts()}>Save Contact Details</Button>
               </div>
             </Card>
           </TabsContent>

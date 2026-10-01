@@ -3,6 +3,7 @@ import { categories as defaultCategories, products as defaultProducts } from "..
 export const PRODUCTS_KEY = "catalog:products";
 export const CATEGORIES_KEY = "catalog:categories";
 export const BANNERS_KEY = "catalog:today-offers-banners";
+export const CONTACTS_KEY = "catalog:footer-contacts";
 
 const json = (body, status = 200) => Response.json(body, { status });
 
@@ -19,6 +20,11 @@ export async function readCategories(env = {}) {
 export async function readBanners(env = {}) {
   if (!env.CATALOG) return [];
   return await env.CATALOG.get(BANNERS_KEY, "json") ?? [];
+}
+
+export async function readContacts(env = {}) {
+  if (!env.CATALOG) return null;
+  return await env.CATALOG.get(CONTACTS_KEY, "json") ?? null;
 }
 
 export async function writeCatalogValue(env, key, value) {
@@ -60,6 +66,15 @@ export function validBanners(value) {
 
   const totalBytes = new TextEncoder().encode(JSON.stringify(value)).length;
   return totalBytes <= 20 * 1024 * 1024;
+}
+
+export function validContacts(value) {
+  return Array.isArray(value) && value.length <= 12 && value.every((contact) =>
+    contact && typeof contact.id === "string" && contact.id.length > 0 && contact.id.length <= 120 &&
+    typeof contact.label === "string" && contact.label.trim().length > 0 && contact.label.length <= 80 &&
+    typeof contact.value === "string" && contact.value.trim().length > 0 && contact.value.length <= 300 &&
+    typeof contact.icon === "string" && contact.icon.length <= 16
+  );
 }
 
 export { json };
