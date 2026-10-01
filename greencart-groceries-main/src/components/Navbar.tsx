@@ -46,10 +46,12 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link to="/cart" className="relative p-2 rounded-full bg-white text-emerald-700">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && <Badge className="absolute -top-1 -right-1 h-4 w-4">{totalItems}</Badge>}
-            </Link>
+            {!isAdminPage && (
+              <Link to="/cart" className="relative p-2 rounded-full bg-white text-emerald-700">
+                <ShoppingCart className="h-5 w-5" />
+                {totalItems > 0 && <Badge className="absolute -top-1 -right-1 h-4 w-4">{totalItems}</Badge>}
+              </Link>
+            )}
             {customer && !isAdminPage ? (
               <div className="hidden lg:flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs">
                 <span aria-label="Signed in customer">Hi, {customer.name}</span>
@@ -99,7 +101,7 @@ export function Navbar() {
         <div className="flex justify-around px-4 py-2 text-xs text-slate-700">
           <Link to="/" className="flex flex-col items-center gap-1 text-emerald-700"><span className="text-base">🏠</span>Home</Link>
           <Link to="/products" className="flex flex-col items-center gap-1"><span className="text-base">🛍️</span>Shop</Link>
-          <Link to="/cart" className="flex flex-col items-center gap-1"><span className="text-base">🛒</span>Cart</Link>
+          {!isAdminPage && <Link to="/cart" className="flex flex-col items-center gap-1"><span className="text-base">🛒</span>Cart</Link>}
           <Link to="/about" className="flex flex-col items-center gap-1"><span className="text-base">📄</span>About</Link>
         </div>
       </div>

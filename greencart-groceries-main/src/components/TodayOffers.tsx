@@ -61,7 +61,7 @@ export function TodayOffers() {
           </div>
         )}
         {offers.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
             {offers.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         ) : <p className="rounded-xl bg-white/70 p-6 text-center text-sm text-slate-600">Today's offers are coming soon. Please check back shortly.</p>}

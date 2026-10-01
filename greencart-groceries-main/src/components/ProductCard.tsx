@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <Card className="overflow-hidden border border-slate-200 rounded-2xl hover:shadow-lg transition-shadow duration-200 bg-white">
-      <Link to={`/product/${slugify(product.category)}/${slugify(product.name)}`} className="relative block h-36 md:h-44 overflow-hidden" aria-label={`View ${product.name}`}>
+      <Link to={`/product/${slugify(product.category)}/${slugify(product.name)}`} className="relative block h-24 sm:h-36 md:h-44 overflow-hidden" aria-label={`View ${product.name}`}>
         <img
           src={product.image}
           alt={product.name}
@@ -29,18 +29,18 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="absolute top-2 left-2 bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded-md">{discount}% OFF</span>
         )}
       </Link>
-      <div className="p-3 space-y-1">
-        <p className="text-xs text-emerald-700 font-medium">{product.category}</p>
+      <div className="space-y-1 p-2 sm:p-3">
+        <p className="truncate text-[10px] font-medium text-emerald-700 sm:text-xs">{product.category}</p>
         <Link to={`/product/${slugify(product.category)}/${slugify(product.name)}`}>
-          <h3 className="font-semibold text-sm text-slate-900 line-clamp-2">{product.name}</h3>
+          <h3 className="line-clamp-2 text-xs font-semibold text-slate-900 sm:text-sm">{product.name}</h3>
         </Link>
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 sm:text-xs">
           <span>{product.unit}</span>
           <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />{product.rating}</span>
         </div>
         <div className="flex items-center justify-between mt-2">
           <div>
-            <div className="text-sm font-bold text-emerald-700">₹{isMember && product.isTodayOffer ? vipPrice : basePrice}</div>
+            <div className="text-xs font-bold text-emerald-700 sm:text-sm">₹{isMember && product.isTodayOffer ? vipPrice : basePrice}</div>
             {product.discountPrice && <div className="text-xs line-through text-slate-400">₹{product.price}</div>}
           </div>
           <button
@@ -48,7 +48,7 @@ export function ProductCard({ product }: { product: Product }) {
             disabled={product.stock <= 0}
             aria-label={product.stock > 0 ? `Add ${product.name} to cart` : `${product.name} is out of stock`}
             title={product.stock > 0 ? "Add to cart" : "Out of stock"}
-            className="h-8 w-8 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 sm:h-8 sm:w-8"
           >
             <ShoppingCart className="h-4 w-4" />
           </button>

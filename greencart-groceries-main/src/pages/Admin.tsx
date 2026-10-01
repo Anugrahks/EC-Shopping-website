@@ -34,7 +34,7 @@ type SavedOrder = {
 };
 
 const Admin = () => {
-  const { members, addMember, removeMember } = useMember();
+  const { members, addMember, removeMember, customerList } = useMember();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [newMemberNumber, setNewMemberNumber] = useState("");
@@ -308,6 +308,7 @@ const Admin = () => {
     { label: "Categories", value: categoriesList.length, icon: Tag },
     { label: "Today's Offers", value: productsList.filter((p) => p.isTodayOffer).length, icon: ShoppingBag },
     { label: "Members", value: members.length, icon: User },
+    { label: "Customers", value: customerList.length, icon: User },
   ];
 
   const orderReport = getOrderReport(orders);
@@ -415,6 +416,7 @@ const Admin = () => {
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="members">Members</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="banners">Banners</TabsTrigger>
           </TabsList>
 
@@ -757,6 +759,30 @@ const Admin = () => {
                   ))
                 )}
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="customers">
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold">Registered Customers</h2>
+                <p className="text-sm text-muted-foreground">These registrations are saved in this browser. Customers who register on another device are not shared with this admin page yet.</p>
+              </div>
+              {customerList.length === 0 ? (
+                <Card className="p-6 text-center text-muted-foreground">No customers registered in this browser yet.</Card>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {customerList.map((customer) => (
+                    <Card key={customer.phone} className="space-y-2 p-4">
+                      <p className="font-semibold">{customer.name}</p>
+                      <p className="text-sm text-muted-foreground">{customer.phone}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {[customer.address, customer.city, customer.pincode].filter(Boolean).join(", ") || "No saved address"}
+                      </p>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
 
