@@ -45,13 +45,35 @@ export function useTodayOffersBanners() {
   const [banners, setBanners] = useState<TodayOffersBanner[]>(getTodayOffersBanners);
 
   useEffect(() => {
-    const syncBanner = (event: StorageEvent) => {
-      if (event.key === TODAY_OFFERS_BANNER_KEY || event.key === null) {
-        setBanners(getTodayOffersBanners());
+    let active = true;
+    const refreshBanners = async () => {
+      try {
+        const response = await fetch("/api/today-offers-banners", { cache: "no-store" });
+        if (!response.ok || response.headers.get("X-Catalog-Storage") !== "configured") return;
+        const remoteBanners = await response.json() as TodayOffersBanner[];
+        if (!Array.isArray(remoteBanners) || !active) return;
+        setBanners(remoteBanners);
+        localStorage.setItem(TODAY_OFFERS_BANNER_KEY, JSON.stringify(remoteBanners));
+      } catch {
+        // Keep the cached banner visible if the network is temporarily unavailable.
       }
     };
+    void refreshBanners();
+    const timer = window.setInterval(() => void refreshBanners(), 30_000);
+    const onFocus = () => void refreshBanners();
+    const syncBanner = (event: StorageEvent) => {
+      if (event.key === TODAY_OFFERS_BANNER_KEY || event.key === null) {
+        void refreshBanners();
+      }
+    };
+    window.addEventListener("focus", onFocus);
     window.addEventListener("storage", syncBanner);
-    return () => window.removeEventListener("storage", syncBanner);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", syncBanner);
+    };
   }, []);
 
   return banners;

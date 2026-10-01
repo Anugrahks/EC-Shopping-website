@@ -50,6 +50,7 @@ const Admin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [adminToken, setAdminToken] = useState("");
   const [sharedCatalogReady, setSharedCatalogReady] = useState(true);
+  const [sharedBannersReady, setSharedBannersReady] = useState(true);
   const [password, setPassword] = useState("");
   const [newMemberNumber, setNewMemberNumber] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
@@ -74,9 +75,10 @@ const Admin = () => {
     let cancelled = false;
     const loadCatalog = async () => {
       try {
-        const [productsResponse, categoriesResponse] = await Promise.all([
+        const [productsResponse, categoriesResponse, bannersResponse] = await Promise.all([
           fetch("/api/products", { cache: "no-store" }),
           fetch("/api/categories", { cache: "no-store" }),
+          fetch("/api/today-offers-banners", { cache: "no-store" }),
         ]);
         if (!productsResponse.ok || !categoriesResponse.ok) throw new Error("Could not load the shared catalog.");
         const [remoteProducts, remoteCategories] = await Promise.all([productsResponse.json(), categoriesResponse.json()]);
@@ -85,6 +87,7 @@ const Admin = () => {
         const productsInitialized = productsResponse.headers.get("X-Catalog-Initialized") === "true";
         const categoriesInitialized = categoriesResponse.headers.get("X-Catalog-Initialized") === "true";
         setSharedCatalogReady(productsResponse.headers.get("X-Catalog-Storage") === "configured" && categoriesResponse.headers.get("X-Catalog-Storage") === "configured");
+        setSharedBannersReady(bannersResponse.headers.get("X-Catalog-Storage") === "configured");
         const nextProducts = !productsInitialized && legacyProducts ? JSON.parse(legacyProducts) : remoteProducts;
         const nextCategories = !categoriesInitialized && legacyCategories ? JSON.parse(legacyCategories) : remoteCategories;
         if (cancelled) return;
@@ -92,6 +95,13 @@ const Admin = () => {
         setCategoriesList(Array.isArray(nextCategories) ? nextCategories : initialCategories);
         localStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
+        if (bannersResponse.ok && bannersResponse.headers.get("X-Catalog-Storage") === "configured" && bannersResponse.headers.get("X-Catalog-Initialized") === "true") {
+          const remoteBanners = await bannersResponse.json() as TodayOffersBanner[];
+          if (Array.isArray(remoteBanners)) {
+            setOffersBanners(remoteBanners);
+            localStorage.setItem(TODAY_OFFERS_BANNER_KEY, JSON.stringify(remoteBanners));
+          }
+        }
       } catch {
         if (cancelled) return;
         try {
@@ -136,31 +146,41 @@ const Admin = () => {
       setIsLoggedIn(true);
       setPassword("");
       try {
-        const [productsResponse, categoriesResponse] = await Promise.all([
+        const [productsResponse, categoriesResponse, bannersResponse] = await Promise.all([
           fetch("/api/products", { cache: "no-store" }),
           fetch("/api/categories", { cache: "no-store" }),
+          fetch("/api/today-offers-banners", { cache: "no-store" }),
         ]);
         const catalogReady = productsResponse.headers.get("X-Catalog-Storage") === "configured" && categoriesResponse.headers.get("X-Catalog-Storage") === "configured";
         setSharedCatalogReady(catalogReady);
-        const [remoteProducts, remoteCategories] = await Promise.all([productsResponse.json(), categoriesResponse.json()]) as [Product[], typeof initialCategories];
+        const bannersReady = bannersResponse.headers.get("X-Catalog-Storage") === "configured";
+        setSharedBannersReady(bannersReady);
+        const [remoteProducts, remoteCategories, remoteBanners] = await Promise.all([productsResponse.json(), categoriesResponse.json(), bannersResponse.json()]) as [Product[], typeof initialCategories, TodayOffersBanner[]];
         if (catalogReady) {
           const productsInitialized = productsResponse.headers.get("X-Catalog-Initialized") === "true";
           const categoriesInitialized = categoriesResponse.headers.get("X-Catalog-Initialized") === "true";
+          const bannersInitialized = bannersResponse.headers.get("X-Catalog-Initialized") === "true";
           const nextProducts = productsInitialized
             ? remoteProducts
             : JSON.parse(localStorage.getItem(PRODUCTS_KEY) || JSON.stringify(remoteProducts)) as Product[];
           const nextCategories = categoriesInitialized
             ? remoteCategories
             : JSON.parse(localStorage.getItem(CATEGORIES_KEY) || JSON.stringify(remoteCategories)) as typeof initialCategories;
+          const nextBanners = bannersInitialized
+            ? remoteBanners
+            : getTodayOffersBanners();
           await Promise.all([
             saveSharedCatalogWithToken("/api/admin/products", nextProducts, result.token),
             saveSharedCatalogWithToken("/api/admin/categories", nextCategories, result.token),
+            saveSharedCatalogWithToken("/api/admin/today-offers-banners", nextBanners, result.token),
           ]);
           setProductsList(nextProducts);
           setCategoriesList(nextCategories);
+          setOffersBanners(nextBanners);
           localStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
           localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
-          toast.success("Signed in and synced this device's catalog across devices.");
+          localStorage.setItem(TODAY_OFFERS_BANNER_KEY, JSON.stringify(nextBanners));
+          toast.success("Signed in and synced this device's catalog and banners across devices.");
         }
         if (!catalogReady) throw new Error("Cloudflare KV is not bound yet. Add a CATALOG KV binding and ADMIN_PASSWORD secret to enable sharing across devices.");
       } catch (error) {
@@ -229,7 +249,7 @@ const Admin = () => {
     const imageUrl = URL.createObjectURL(file);
     const image = new Image();
     image.onload = () => {
-      const maxDimension = 1600;
+      const maxDimension = 1200;
       const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
       const canvas = document.createElement("canvas");
       canvas.width = Math.round(image.width * scale);
@@ -241,7 +261,7 @@ const Admin = () => {
         return;
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const compressed = canvas.toDataURL("image/webp", 0.72);
+      const compressed = canvas.toDataURL("image/webp", 0.62);
       URL.revokeObjectURL(imageUrl);
       resolve(compressed);
     };
@@ -293,19 +313,26 @@ const Admin = () => {
     setOffersBanners((current) => current.filter((banner) => banner.id !== id));
   };
 
-  const saveOffersBanner = () => {
+  const saveOffersBanner = async () => {
     try {
+      await saveSharedCatalog("/api/admin/today-offers-banners", offersBanners);
       localStorage.setItem(TODAY_OFFERS_BANNER_KEY, JSON.stringify(offersBanners));
-      toast.success("Homepage offer banners saved");
-    } catch {
-      toast.error("Could not save the banner. Try a smaller image.");
+      toast.success("Offer banners saved and synced to all devices");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the banners. Try smaller images.");
     }
   };
 
-  const clearOffersBanner = () => {
+  const clearOffersBanner = async () => {
+    try {
+      await saveSharedCatalog("/api/admin/today-offers-banners", []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove the shared banners.");
+      return;
+    }
     setOffersBanners([]);
     localStorage.removeItem(TODAY_OFFERS_BANNER_KEY);
-    toast.success("Offers banner removed from the homepage");
+    toast.success("Offers banner removed from every device");
   };
 
   const saveProduct = () => {
@@ -910,6 +937,10 @@ const Admin = () => {
 
           <TabsContent value="banners">
             <Card className="space-y-5 p-6">
+              {!sharedBannersReady && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                <p className="font-semibold">Offer banners are currently saved only in this browser.</p>
+                <p>Configure the Cloudflare <strong>CATALOG</strong> KV binding, then sign in and save the banners to show them on phones and other devices.</p>
+              </div>}
               <div className="flex items-start gap-3">
                 <ImageIcon className="mt-1 h-6 w-6 text-primary" />
                 <div>
@@ -920,7 +951,7 @@ const Admin = () => {
               <div className="space-y-2">
                 <Label htmlFor="offers-banner-image">Upload banners ({offersBanners.length}/10)</Label>
                 <Input id="offers-banner-image" type="file" accept="image/*" multiple disabled={offersBanners.length >= 10} onChange={(event) => { void handleOffersBannerUpload(event.target.files); event.target.value = ""; }} className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground" />
-                <p className="text-xs text-muted-foreground">Select multiple image files at once. Each file can be up to 10 MB and is compressed before saving in this browser.</p>
+                <p className="text-xs text-muted-foreground">Select multiple image files at once. Each file can be up to 10 MB and is compressed before saving to the shared catalog.</p>
               </div>
               {offersBanners.length > 0 ? <div className="space-y-4">
                 {offersBanners.map((banner, index) => <div key={banner.id} className="space-y-3 rounded-xl border p-4">
@@ -948,7 +979,7 @@ const Admin = () => {
                 </div>)}
               </div> : <p className="rounded-lg bg-muted p-6 text-center text-sm text-muted-foreground">No offer banners uploaded yet.</p>}
               <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4">
-                <p className="text-sm text-muted-foreground">Only enabled banners will rotate on the homepage.</p>
+                <p className="text-sm text-muted-foreground">Only enabled banners appear on the homepage across devices after saving.</p>
                 <div className="flex gap-2">
                   {offersBanners.length > 0 && <Button variant="outline" onClick={clearOffersBanner}>Remove all</Button>}
                   <Button onClick={saveOffersBanner}>Save Banners</Button>

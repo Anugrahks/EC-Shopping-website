@@ -2,6 +2,7 @@ import { categories as defaultCategories, products as defaultProducts } from "..
 
 export const PRODUCTS_KEY = "catalog:products";
 export const CATEGORIES_KEY = "catalog:categories";
+export const BANNERS_KEY = "catalog:today-offers-banners";
 
 const json = (body, status = 200) => Response.json(body, { status });
 
@@ -13,6 +14,11 @@ export async function readProducts(env = {}) {
 export async function readCategories(env = {}) {
   if (!env.CATALOG) return defaultCategories;
   return await env.CATALOG.get(CATEGORIES_KEY, "json") ?? defaultCategories;
+}
+
+export async function readBanners(env = {}) {
+  if (!env.CATALOG) return [];
+  return await env.CATALOG.get(BANNERS_KEY, "json") ?? [];
 }
 
 export async function writeCatalogValue(env, key, value) {
@@ -41,6 +47,19 @@ export function validCategories(value) {
     category && typeof category.id === "string" && typeof category.name === "string" && category.name.trim().length > 0 &&
     typeof category.icon === "string" && typeof category.image === "string"
   );
+}
+
+export function validBanners(value) {
+  if (!Array.isArray(value) || value.length > 10 || !value.every((banner) =>
+    banner && typeof banner.id === "string" && banner.id.length <= 120 &&
+    typeof banner.image === "string" && banner.image.startsWith("data:image/") &&
+    typeof banner.title === "string" && banner.title.length <= 160 &&
+    typeof banner.subtitle === "string" && banner.subtitle.length <= 300 &&
+    typeof banner.enabled === "boolean"
+  )) return false;
+
+  const totalBytes = new TextEncoder().encode(JSON.stringify(value)).length;
+  return totalBytes <= 20 * 1024 * 1024;
 }
 
 export { json };
