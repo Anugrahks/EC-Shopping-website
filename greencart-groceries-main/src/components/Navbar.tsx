@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, User, LogIn, UserPlus } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ShoppingCart, Search, Menu, X, MapPin, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart-context";
 import { useMember } from "@/lib/member-context";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -13,6 +14,7 @@ export function Navbar() {
   const { totalItems } = useCart();
   const { member, isMember, memberName, logoutMember, customer, logoutCustomer } = useMember();
   const navigate = useNavigate();
+  const isAdminPage = useLocation().pathname.startsWith("/admin");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,10 +28,10 @@ export function Navbar() {
     <>
       <header className="bg-[#0f6f42] text-white sticky top-0 z-50">
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-          <div className="flex items-center gap-2 text-xl font-bold">
+          <Link to="/" className="flex items-center gap-2 text-xl font-bold" aria-label="EC Shopping home">
             <span className="text-2xl">🥬</span>
             <span>EC SHOPPING</span>
-          </div>
+          </Link>
 
           <div className="hidden lg:flex flex-1 justify-center px-2">
             <form onSubmit={handleSearch} className="relative w-full max-w-2xl">
@@ -48,11 +50,24 @@ export function Navbar() {
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && <Badge className="absolute -top-1 -right-1 h-4 w-4">{totalItems}</Badge>}
             </Link>
-            <div className="hidden lg:flex gap-2">
-              <Link to="/login" className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">Login</Link>
-              <Link to="/login" className="rounded-full border border-white px-3 py-1 text-xs font-semibold text-white">Register</Link>
-            </div>
-            <button className="lg:hidden rounded-full border border-white p-2" onClick={() => setMobileMenuOpen((v) => !v)}>
+            {customer && !isAdminPage ? (
+              <div className="hidden lg:flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs">
+                <span aria-label="Signed in customer">Hi, {customer.name}</span>
+                <button
+                  type="button"
+                  className="rounded-full border border-white/50 p-1 hover:bg-white/15"
+                  aria-label="Log out"
+                  title="Log out"
+                  onClick={() => { logoutCustomer(); toast.success("You have logged out"); }}
+                ><LogOut className="h-3.5 w-3.5" /></button>
+              </div>
+            ) : !isAdminPage ? (
+              <div className="hidden lg:flex gap-2">
+                <Link to="/login" className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">Login</Link>
+                <Link to="/login" className="rounded-full border border-white px-3 py-1 text-xs font-semibold text-white">Register</Link>
+              </div>
+            ) : null}
+            <button className="lg:hidden rounded-full border border-white p-2" aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((v) => !v)}>
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
@@ -71,10 +86,11 @@ export function Navbar() {
 
           {mobileMenuOpen && (
             <div className="lg:hidden w-full mt-2 bg-white text-slate-800 rounded-xl p-3 text-sm">
-              <Link to="/" className="block py-2">Home</Link>
-              <Link to="/products" className="block py-2">Shop</Link>
-              <Link to="/about" className="block py-2">About</Link>
-              <Link to="/login" className="block py-2">Login / Register</Link>
+              {customer && !isAdminPage && <div className="mb-2 border-b pb-2 text-emerald-800"><p className="font-semibold">Signed in as {customer.name}</p><p className="text-xs text-slate-500">{customer.phone}</p><p className="mt-1 flex items-start gap-1 text-xs text-slate-500"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{[customer.address, customer.city, customer.pincode].filter(Boolean).join(", ") || "No saved delivery address"}</p></div>}
+              <Link to="/" onClick={() => setMobileMenuOpen(false)} className="block py-2">Home</Link>
+              <Link to="/products" onClick={() => setMobileMenuOpen(false)} className="block py-2">Shop</Link>
+              <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block py-2">About</Link>
+              {customer ? <button type="button" onClick={() => { logoutCustomer(); setMobileMenuOpen(false); toast.success("You have logged out"); }} className="block py-2 text-left text-red-600">Log out</button> : <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block py-2">Login / Register</Link>}
             </div>
           )}
         </div>

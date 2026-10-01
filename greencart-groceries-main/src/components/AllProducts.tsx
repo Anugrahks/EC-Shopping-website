@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { products } from "@/lib/data";
+import { products as defaultProducts } from "@/lib/data";
 import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
+import { useCatalogProducts } from "@/lib/use-catalog-products";
 
 const CATEGORIES_KEY = "gc_categories";
 
 export function AllProducts() {
+  const products = useCatalogProducts();
   const [activeCategory, setActiveCategory] = useState("All");
   const [categories, setCategories] = useState<string[]>([]);
 
@@ -22,7 +24,7 @@ export function AllProducts() {
         // ignore
       }
     }
-    setCategories([...new Set(products.map((p) => p.category))]);
+    setCategories([...new Set(defaultProducts.map((p) => p.category))]);
   }, []);
 
   const allCategories = ["All", ...categories];

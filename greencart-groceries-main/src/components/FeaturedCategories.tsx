@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { categories as defaultCategories } from "@/lib/data";
 import { Link } from "react-router-dom";
+import { slugify } from "@/lib/slug";
 
 const CATEGORIES_KEY = "gc_categories";
 
@@ -30,7 +31,7 @@ export function FeaturedCategories() {
         {categories.map((cat) => (
           <Link
             key={cat.id}
-            to={`/products?category=${encodeURIComponent(cat.name)}`}
+            to={`/category/${slugify(cat.name)}`}
             className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card hover:bg-accent border border-transparent hover:border-primary/20 transition-all group"
           >
             <div className="w-16 h-16 rounded-full overflow-hidden bg-muted text-2xl grid place-items-center">

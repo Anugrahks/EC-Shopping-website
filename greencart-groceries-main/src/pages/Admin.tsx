@@ -7,20 +7,29 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Pencil, Trash2, Plus, Package, LayoutDashboard, ShoppingBag, Tag, Image as ImageIcon, User, Trash } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { TODAY_OFFERS_BANNER_KEY, getTodayOffersBanners, type TodayOffersBanner } from "@/lib/today-offers-banner";
+import { getOrderReport, type OrderStatus } from "@/lib/order-report";
 
 const ORDERS_KEY = "gc_orders";
 const CATEGORIES_KEY = "gc_categories";
+const PRODUCTS_KEY = "gc_products";
 
 type SavedOrder = {
   id: string;
   name: string;
+  phone?: string;
+  deliveryAddress?: string;
   total: number;
   date: string;
+  createdAt?: string;
+  status?: OrderStatus;
+  deliveryLocation?: { latitude: number; longitude: number; accuracy: number } | null;
   items: Array<{ productName: string; quantity: number; amount: number }>;
 };
 
@@ -32,8 +41,12 @@ const Admin = () => {
   const [newMemberName, setNewMemberName] = useState("");
   const [newCategory, setNewCategory] = useState({ name: "", icon: "", image: "" });
   const [productsList, setProductsList] = useState<Product[]>(initialProducts);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState({ name: "", category: "", price: "", discountPrice: "", stock: "", unit: "", image: "", description: "" });
   const [categoriesList, setCategoriesList] = useState(initialCategories);
   const [orders, setOrders] = useState<SavedOrder[]>([]);
+  const [offersBanners, setOffersBanners] = useState<TodayOffersBanner[]>(getTodayOffersBanners);
 
   useEffect(() => {
     const storedOrders = localStorage.getItem(ORDERS_KEY);
@@ -52,19 +65,214 @@ const Admin = () => {
         setCategoriesList(initialCategories);
       }
     }
+    const storedProducts = localStorage.getItem(PRODUCTS_KEY);
+    if (storedProducts) {
+      try {
+        setProductsList(JSON.parse(storedProducts));
+      } catch {
+        setProductsList(initialProducts);
+      }
+    }
   }, []);
+
+  const openProductDialog = (product?: Product) => {
+    setEditingProductId(product?.id ?? null);
+    const defaultCategory = categoriesList[0]?.name || "";
+    setProductForm(product ? {
+      name: product.name,
+      category: product.category,
+      price: String(product.price),
+      discountPrice: product.discountPrice ? String(product.discountPrice) : "",
+      stock: String(product.stock),
+      unit: product.unit,
+      image: product.image,
+      description: product.description,
+    } : { name: "", category: defaultCategory, price: "", discountPrice: "", stock: "", unit: "", image: "", description: "" });
+    setProductDialogOpen(true);
+  };
+
+  const handleProductImageUpload = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be smaller than 10 MB");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 1280;
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(imageUrl);
+        toast.error("Could not process this image");
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      setProductForm((previous) => ({ ...previous, image: canvas.toDataURL("image/webp", 0.82) }));
+      URL.revokeObjectURL(imageUrl);
+      toast.success("Product image uploaded");
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl);
+      toast.error("Could not open this image");
+    };
+    image.src = imageUrl;
+  };
+
+  const compressBannerImage = (file: File) => new Promise<string>((resolve, reject) => {
+    const imageUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 1600;
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(imageUrl);
+        reject(new Error("Could not process this banner image"));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL("image/webp", 0.72);
+      URL.revokeObjectURL(imageUrl);
+      resolve(compressed);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl);
+      reject(new Error(`Could not open ${file.name}`));
+    };
+    image.src = imageUrl;
+  });
+
+  const handleOffersBannerUpload = async (files?: FileList | null) => {
+    if (!files?.length) return;
+    const selected = Array.from(files);
+    const remainingSlots = 10 - offersBanners.length;
+    if (selected.length > remainingSlots) {
+      toast.error(`You can upload up to 10 banners. ${remainingSlots} slot(s) remaining.`);
+      return;
+    }
+    if (selected.some((file) => !file.type.startsWith("image/"))) {
+      toast.error("Choose image files only");
+      return;
+    }
+    if (selected.some((file) => file.size > 10 * 1024 * 1024)) {
+      toast.error("Each banner image must be smaller than 10 MB");
+      return;
+    }
+
+    try {
+      const images = await Promise.all(selected.map(compressBannerImage));
+      const added = images.map((image, index) => ({
+        id: `${Date.now()}-${index}`,
+        image,
+        title: "Today's Offers",
+        subtitle: "Don't miss these amazing deals!",
+        enabled: true,
+      }));
+      setOffersBanners((current) => [...current, ...added]);
+      toast.success(`${added.length} banner${added.length === 1 ? "" : "s"} uploaded. Save to publish.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not process banner images");
+    }
+  };
+
+  const updateOffersBanner = (id: string, changes: Partial<TodayOffersBanner>) => {
+    setOffersBanners((current) => current.map((banner) => banner.id === id ? { ...banner, ...changes } : banner));
+  };
+
+  const removeOffersBanner = (id: string) => {
+    setOffersBanners((current) => current.filter((banner) => banner.id !== id));
+  };
+
+  const saveOffersBanner = () => {
+    try {
+      localStorage.setItem(TODAY_OFFERS_BANNER_KEY, JSON.stringify(offersBanners));
+      toast.success("Homepage offer banners saved");
+    } catch {
+      toast.error("Could not save the banner. Try a smaller image.");
+    }
+  };
+
+  const clearOffersBanner = () => {
+    setOffersBanners([]);
+    localStorage.removeItem(TODAY_OFFERS_BANNER_KEY);
+    toast.success("Offers banner removed from the homepage");
+  };
+
+  const saveProduct = () => {
+    const price = Number(productForm.price);
+    const stock = Number(productForm.stock);
+    if (!productForm.name.trim() || !productForm.category.trim() || !productForm.unit.trim() || !Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < 0) {
+      toast.error("Enter a name, category, unit, valid price, and whole-number stock");
+      return;
+    }
+    const discountPrice = productForm.discountPrice ? Number(productForm.discountPrice) : undefined;
+    if (discountPrice !== undefined && (!Number.isFinite(discountPrice) || discountPrice <= 0 || discountPrice >= price)) {
+      toast.error("Sale price must be greater than zero and below the regular price");
+      return;
+    }
+    const product: Product = {
+      id: editingProductId || `${Date.now()}`,
+      name: productForm.name.trim(),
+      category: productForm.category.trim(),
+      price,
+      discountPrice,
+      stock,
+      unit: productForm.unit.trim(),
+      image: productForm.image.trim() || "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=600&fit=crop",
+      description: productForm.description.trim() || `${productForm.name.trim()} from EC SHOPPING.`,
+      rating: editingProductId ? productsList.find((item) => item.id === editingProductId)?.rating || 4 : 4,
+      isTodayOffer: editingProductId ? productsList.find((item) => item.id === editingProductId)?.isTodayOffer : false,
+      isPopular: editingProductId ? productsList.find((item) => item.id === editingProductId)?.isPopular : false,
+    };
+    setProductsList((previous) => {
+      const updated = editingProductId
+        ? previous.map((item) => item.id === editingProductId ? product : item)
+        : [...previous, product];
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    setProductDialogOpen(false);
+    toast.success(editingProductId ? "Product updated" : "Product added");
+  };
 
   const refreshOrders = () => {
     const stored = localStorage.getItem(ORDERS_KEY);
     if (stored) {
       try {
-        setOrders(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setOrders(parsed.map((order: SavedOrder) => ({
+          ...order,
+          status: order.status || "pending",
+          createdAt: order.createdAt || new Date().toISOString(),
+        })));
       } catch {
         setOrders([]);
       }
     } else {
       setOrders([]);
     }
+  };
+
+  const updateOrderStatus = (id: string, status: OrderStatus) => {
+    setOrders((current) => {
+      const next = current.map((order) => order.id === id ? { ...order, status } : order);
+      localStorage.setItem(ORDERS_KEY, JSON.stringify(next));
+      return next;
+    });
+    toast.success(`Order marked as ${status}`);
   };
 
   useEffect(() => {
@@ -78,12 +286,20 @@ const Admin = () => {
   }, []);
 
   const toggleOffer = (id: string) => {
-    setProductsList((prev) => prev.map((p) => (p.id === id ? { ...p, isTodayOffer: !p.isTodayOffer } : p)));
+    setProductsList((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, isTodayOffer: !p.isTodayOffer } : p));
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updated));
+      return updated;
+    });
     toast.success("Offer updated");
   };
 
   const deleteProduct = (id: string) => {
-    setProductsList((prev) => prev.filter((p) => p.id !== id));
+    setProductsList((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updated));
+      return updated;
+    });
     toast.success("Product deleted");
   };
 
@@ -93,6 +309,12 @@ const Admin = () => {
     { label: "Today's Offers", value: productsList.filter((p) => p.isTodayOffer).length, icon: ShoppingBag },
     { label: "Members", value: members.length, icon: User },
   ];
+
+  const orderReport = getOrderReport(orders);
+  const receivedCount = orders.filter((order) => order.status === "received").length;
+  const deliveredCount = orders.filter((order) => order.status === "delivered").length;
+  const returnedCount = orders.filter((order) => order.status === "returned").length;
+  const pendingCount = orders.filter((order) => !order.status || order.status === "pending").length;
 
   if (!isLoggedIn) {
     return (
@@ -108,7 +330,6 @@ const Admin = () => {
             <Button className="w-full" onClick={() => {
               if (password === "admin123") {
                 setIsLoggedIn(true);
-                toast.success("Welcome, Admin!");
               } else {
                 toast.error("Invalid password");
               }
@@ -146,11 +367,53 @@ const Admin = () => {
           ))}
         </div>
 
+        <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingProductId ? "Edit Product" : "Add Product"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2"><Label htmlFor="product-name">Name</Label><Input id="product-name" value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} /></div>
+              <div className="space-y-2">
+                <Label htmlFor="product-category">Category</Label>
+                <select
+                  id="product-category"
+                  value={productForm.category}
+                  onChange={(event) => setProductForm({ ...productForm, category: event.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Select a category</option>
+                  {categoriesList.map((category) => (
+                    <option key={category.id} value={category.name}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2"><Label htmlFor="product-price">Price (₹)</Label><Input id="product-price" type="number" min="0.01" step="0.01" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-sale-price">Sale price (optional)</Label><Input id="product-sale-price" type="number" min="0.01" step="0.01" value={productForm.discountPrice} onChange={(event) => setProductForm({ ...productForm, discountPrice: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-stock">Stock</Label><Input id="product-stock" type="number" min="0" step="1" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-unit">Unit</Label><Input id="product-unit" placeholder="e.g. 1kg" value={productForm.unit} onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })} /></div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="product-image">Upload product image</Label>
+                <Input id="product-image" type="file" accept="image/*" onChange={(event) => handleProductImageUpload(event.target.files?.[0])} className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground" />
+                <p className="text-xs text-muted-foreground">Choose an image up to 10 MB. It will be resized and saved with this product.</p>
+                {productForm.image && <img src={productForm.image} alt="Product image preview" className="h-32 w-32 rounded-lg border object-cover" />}
+              </div>
+              <div className="space-y-2 sm:col-span-2"><Label htmlFor="product-description">Description</Label><Textarea id="product-description" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Cancel</Button>
+              <Button onClick={saveProduct}>{editingProductId ? "Save Changes" : "Add Product"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Tabs defaultValue="products">
           <TabsList className="mb-6">
             <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="offers">Today's Offers</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="banners">Banners</TabsTrigger>
           </TabsList>
@@ -159,7 +422,7 @@ const Admin = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Manage Products</h2>
-                <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Product</Button>
+                <Button size="sm" className="gap-1" onClick={() => openProductDialog()}><Plus className="h-4 w-4" /> Add Product</Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
@@ -191,8 +454,8 @@ const Admin = () => {
                         </td>
                         <td className="p-3">
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteProduct(p.id)}><Trash2 className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${p.name}`} onClick={() => openProductDialog(p)}><Pencil className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Delete ${p.name}`} onClick={() => deleteProduct(p.id)}><Trash2 className="h-3 w-3" /></Button>
                           </div>
                         </td>
                       </tr>
@@ -200,6 +463,41 @@ const Admin = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="offers">
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold">Manage Today's Offers</h2>
+                <p className="text-sm text-muted-foreground">Turn products on or off in the home-page offers section. Edit a product to set its sale price.</p>
+              </div>
+              {productsList.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">Add products first to create today's offers.</Card>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {productsList.map((product) => (
+                    <Card key={product.id} className="flex items-center gap-3 p-4">
+                      <img src={product.image} alt={product.name} className="h-14 w-14 rounded-lg object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold">{product.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.discountPrice ? `Offer price ₹${product.discountPrice} (was ₹${product.price})` : `Price ₹${product.price} · no sale price set`}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <Switch
+                          checked={Boolean(product.isTodayOffer)}
+                          onCheckedChange={() => toggleOffer(product.id)}
+                          aria-label={`${product.isTodayOffer ? "Remove" : "Add"} ${product.name} ${product.isTodayOffer ? "from" : "to"} today's offers`}
+                        />
+                        <span className="text-[10px] text-muted-foreground">{product.isTodayOffer ? "Shown" : "Hidden"}</span>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => openProductDialog(product)}>Edit</Button>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -220,6 +518,11 @@ const Admin = () => {
                     placeholder="Icon"
                     value={newCategory.icon}
                     onChange={(e) => setNewCategory((prev) => ({ ...prev, icon: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Image URL (optional)"
+                    value={newCategory.image}
+                    onChange={(e) => setNewCategory((prev) => ({ ...prev, image: e.target.value }))}
                   />
                   <Button
                     className="whitespace-nowrap"
@@ -292,13 +595,102 @@ const Admin = () => {
                         <div>{order.date}</div>
                         <div className="text-right font-semibold">₹{order.total}</div>
                       </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Badge variant={order.status === "delivered" ? "default" : order.status === "received" ? "secondary" : order.status === "returned" ? "destructive" : "outline"}>
+                          {order.status || "pending"}
+                        </Badge>
+                        {order.status === "delivered" ? (
+                          <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, "returned")}>Return</Button>
+                        ) : order.status === "returned" ? (
+                          <Button size="sm" variant="secondary" disabled>Returned</Button>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, "received")}>Received</Button>
+                            <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, "delivered")}>Delivered</Button>
+                          </>
+                        )}
+                      </div>
+
                       <div className="mt-2 text-xs text-muted-foreground">
                         Items: {order.items.length} · {order.items.map((i) => `${i.productName}×${i.quantity}`).join(", ")}
                       </div>
+                      {(order.phone || order.deliveryAddress) && <div className="mt-2 rounded-md bg-muted/60 p-2 text-xs">
+                        <p className="font-semibold text-foreground">Delivery details</p>
+                        {order.phone && <p>Phone: {order.phone}</p>}
+                        {order.deliveryAddress && <p>Address: {order.deliveryAddress}</p>}
+                      </div>}
+                      {order.deliveryLocation ? <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2 text-xs">
+                        <p className="font-semibold text-foreground">Shared delivery location</p>
+                        <p className="text-muted-foreground">{order.deliveryLocation.latitude.toFixed(6)}, {order.deliveryLocation.longitude.toFixed(6)} (accuracy ±{Math.round(order.deliveryLocation.accuracy)} m)</p>
+                        <a
+                          className="mt-1 inline-flex items-center gap-1 font-medium text-primary underline"
+                          href={`https://www.google.com/maps?q=${order.deliveryLocation.latitude},${order.deliveryLocation.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >Open location in Google Maps</a>
+                      </div> : <p className="mt-2 text-xs text-muted-foreground">No GPS location shared for this order. The delivery address is shown above if provided.</p>}
                     </Card>
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold">Sales Report</h2>
+                <p className="text-sm text-muted-foreground">Track total sales and number of orders by period.</p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Today</p>
+                  <p className="mt-2 text-2xl font-bold">₹{orderReport.day.total}</p>
+                  <p className="text-xs text-muted-foreground">{orderReport.day.count} orders</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">This week</p>
+                  <p className="mt-2 text-2xl font-bold">₹{orderReport.week.total}</p>
+                  <p className="text-xs text-muted-foreground">{orderReport.week.count} orders</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">This month</p>
+                  <p className="mt-2 text-2xl font-bold">₹{orderReport.month.total}</p>
+                  <p className="text-xs text-muted-foreground">{orderReport.month.count} orders</p>
+                </Card>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Total orders</p>
+                  <p className="mt-2 text-2xl font-bold">{orders.length}</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Received</p>
+                  <p className="mt-2 text-2xl font-bold">{receivedCount}</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Delivered</p>
+                  <p className="mt-2 text-2xl font-bold">{deliveredCount}</p>
+                </Card>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="mt-2 text-2xl font-bold">{pendingCount}</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Returned</p>
+                  <p className="mt-2 text-2xl font-bold">{returnedCount}</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Total sales</p>
+                  <p className="mt-2 text-2xl font-bold">₹{orders.reduce((sum, order) => sum + (Number(order.total) || 0), 0)}</p>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
@@ -369,9 +761,51 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="banners">
-            <Card className="p-8 text-center text-muted-foreground">
-              <ImageIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Banner management will be available with Lovable Cloud.</p>
+            <Card className="space-y-5 p-6">
+              <div className="flex items-start gap-3">
+                <ImageIcon className="mt-1 h-6 w-6 text-primary" />
+                <div>
+                  <h2 className="text-xl font-bold">Homepage Today's Offers Banners</h2>
+                  <p className="text-sm text-muted-foreground">Upload up to 10 banners. Enabled banners rotate above the daily offer products on the homepage.</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="offers-banner-image">Upload banners ({offersBanners.length}/10)</Label>
+                <Input id="offers-banner-image" type="file" accept="image/*" multiple disabled={offersBanners.length >= 10} onChange={(event) => { void handleOffersBannerUpload(event.target.files); event.target.value = ""; }} className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground" />
+                <p className="text-xs text-muted-foreground">Select multiple image files at once. Each file can be up to 10 MB and is compressed before saving in this browser.</p>
+              </div>
+              {offersBanners.length > 0 ? <div className="space-y-4">
+                {offersBanners.map((banner, index) => <div key={banner.id} className="space-y-3 rounded-xl border p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold">Banner {index + 1}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Switch id={`offers-banner-enabled-${banner.id}`} checked={banner.enabled} onCheckedChange={(enabled) => updateOffersBanner(banner.id, { enabled })} />
+                        <Label htmlFor={`offers-banner-enabled-${banner.id}`} className="text-sm">Show</Label>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="text-destructive" aria-label={`Remove banner ${index + 1}`} onClick={() => removeOffersBanner(banner.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2"><Label htmlFor={`offers-banner-title-${banner.id}`}>Title</Label><Input id={`offers-banner-title-${banner.id}`} value={banner.title} onChange={(event) => updateOffersBanner(banner.id, { title: event.target.value })} /></div>
+                    <div className="space-y-2"><Label htmlFor={`offers-banner-subtitle-${banner.id}`}>Message</Label><Input id={`offers-banner-subtitle-${banner.id}`} value={banner.subtitle} onChange={(event) => updateOffersBanner(banner.id, { subtitle: event.target.value })} /></div>
+                  </div>
+                  <div className="relative overflow-hidden rounded-xl border">
+                    <img src={banner.image} alt={`Today's offers banner ${index + 1} preview`} className="h-40 w-full object-cover sm:h-52" />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/10 to-transparent p-5 text-white">
+                      <p className="text-2xl font-bold">{banner.title || "Today's Offers"}</p>
+                      <p>{banner.subtitle}</p>
+                    </div>
+                  </div>
+                </div>)}
+              </div> : <p className="rounded-lg bg-muted p-6 text-center text-sm text-muted-foreground">No offer banners uploaded yet.</p>}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4">
+                <p className="text-sm text-muted-foreground">Only enabled banners will rotate on the homepage.</p>
+                <div className="flex gap-2">
+                  {offersBanners.length > 0 && <Button variant="outline" onClick={clearOffersBanner}>Remove all</Button>}
+                  <Button onClick={saveOffersBanner}>Save Banners</Button>
+                </div>
+              </div>
             </Card>
           </TabsContent>
         </Tabs>

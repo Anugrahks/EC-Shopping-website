@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { CartItem, Product } from "./data";
 import { toast } from "sonner";
 
@@ -13,13 +13,33 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const CART_STORAGE_KEY = "gc_cart";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      return saved ? JSON.parse(saved) as CartItem[] : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
 
   const addToCart = useCallback((product: Product) => {
+    if (product.stock <= 0) {
+      toast.error(`${product.name} is out of stock`);
+      return;
+    }
     setItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
+      if (existing && existing.quantity >= product.stock) {
+        toast.error(`Only ${product.stock} ${product.unit} available`);
+        return prev;
+      }
       if (existing) {
         return prev.map((i) =>
           i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
@@ -39,11 +59,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItems((prev) => prev.filter((i) => i.product.id !== productId));
       return;
     }
-    setItems((prev) =>
-      prev.map((i) =>
-        i.product.id === productId ? { ...i, quantity } : i
-      )
-    );
+    setItems((prev) => prev.map((item) => item.product.id === productId
+      ? { ...item, quantity: Math.min(quantity, item.product.stock) }
+      : item));
   }, []);
 
   const clearCart = useCallback(() => setItems([]), []);

@@ -1,9 +1,10 @@
-import { products } from "@/lib/data";
 import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useCatalogProducts } from "@/lib/use-catalog-products";
 
 export function PopularProducts() {
+  const products = useCatalogProducts();
   const popular = products.filter((p) => p.isPopular);
 
   return (

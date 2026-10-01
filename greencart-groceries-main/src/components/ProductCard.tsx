@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Star, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
+import { slugify } from "@/lib/slug";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
@@ -17,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <Card className="overflow-hidden border border-slate-200 rounded-2xl hover:shadow-lg transition-shadow duration-200 bg-white">
-      <Link to={`/product/${product.id}`} className="relative block h-36 md:h-44 overflow-hidden">
+      <Link to={`/product/${slugify(product.category)}/${slugify(product.name)}`} className="relative block h-36 md:h-44 overflow-hidden" aria-label={`View ${product.name}`}>
         <img
           src={product.image}
           alt={product.name}
@@ -30,7 +31,7 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
       <div className="p-3 space-y-1">
         <p className="text-xs text-emerald-700 font-medium">{product.category}</p>
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${slugify(product.category)}/${slugify(product.name)}`}>
           <h3 className="font-semibold text-sm text-slate-900 line-clamp-2">{product.name}</h3>
         </Link>
         <div className="flex items-center justify-between text-xs text-slate-500">
@@ -44,6 +45,9 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
           <button
             onClick={(e) => { e.preventDefault(); addToCart(product); }}
+            disabled={product.stock <= 0}
+            aria-label={product.stock > 0 ? `Add ${product.name} to cart` : `${product.name} is out of stock`}
+            title={product.stock > 0 ? "Add to cart" : "Out of stock"}
             className="h-8 w-8 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center"
           >
             <ShoppingCart className="h-4 w-4" />

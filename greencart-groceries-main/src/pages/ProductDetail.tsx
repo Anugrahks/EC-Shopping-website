@@ -7,33 +7,54 @@ import { useCart } from "@/lib/cart-context";
 import { useMember } from "@/lib/member-context";
 import { Star, ShoppingCart, ArrowLeft } from "lucide-react";
 import type { Product } from "@/lib/data";
+import { SEOHead } from "@/components/SEOHead";
+import { slugify } from "@/lib/slug";
+import { products as localProducts } from "@/lib/data";
+import { getCatalogProducts } from "@/lib/use-catalog-products";
 
 const ProductDetail = () => {
-  const { id } = useParams();
+  const { id, categorySlug, productSlug } = useParams();
   const { addToCart } = useCart();
+  const { isMember } = useMember();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id && (!categorySlug || !productSlug)) return;
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/products/${id}`);
-        if (!res.ok) {
-          setProduct(null);
+        const savedProduct = getCatalogProducts().find((item) => id
+          ? item.id === id
+          : slugify(item.category) === categorySlug && slugify(item.name) === productSlug);
+        if (savedProduct) {
+          setProduct(savedProduct);
           return;
         }
-        const data = await res.json();
-        setProduct(data);
+        if (categorySlug && productSlug) {
+          const res = await fetch("/api/products");
+          if (!res.ok) throw new Error("Could not load products");
+          const allProducts: Product[] = await res.json();
+          setProduct(allProducts.find((item) => slugify(item.category) === categorySlug && slugify(item.name) === productSlug) || null);
+        } else {
+          const res = await fetch(`/api/products/${id}`);
+          if (!res.ok) {
+            setProduct(null);
+            return;
+          }
+          setProduct(await res.json());
+        }
       } catch (error) {
         console.error(error);
+        setProduct(localProducts.find((item) => id
+          ? item.id === id
+          : slugify(item.category) === categorySlug && slugify(item.name) === productSlug) || null);
       } finally {
         setLoading(false);
       }
     };
     fetchProduct();
-  }, [id]);
+  }, [id, categorySlug, productSlug]);
 
   if (loading) {
     return (
@@ -61,12 +82,31 @@ const ProductDetail = () => {
   const discount = product.discountPrice
     ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
     : 0;
-  const { isMember } = useMember();
   const basePrice = product.discountPrice || product.price;
   const vipPrice = product.isTodayOffer ? Math.round(basePrice * 0.9) : basePrice;
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title={`${product.name} | Buy Online | EC SHOPPING`}
+        description={`${product.description}. Buy ${product.name} online for ₹${product.discountPrice || product.price} at EC SHOPPING. Fresh groceries delivered to your doorstep.`}
+        image={product.image}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          description: product.description,
+          image: product.image,
+          category: product.category,
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: product.discountPrice || product.price,
+            availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url: window.location.href,
+          },
+        }}
+      />
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <Link to="/products" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-6">

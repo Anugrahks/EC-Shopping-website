@@ -14,6 +14,7 @@ import About from "./pages/About.tsx";
 import Login from "./pages/Login.tsx";
 import Admin from "./pages/Admin.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { SiteStructuredData } from "@/components/SEOHead";
 
 const queryClient = new QueryClient();
 
@@ -24,10 +25,13 @@ const App = () => (
         <CartProvider>
           <Toaster />
           <Sonner />
+          <SiteStructuredData />
           <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/category/:categorySlug" element={<Products />} />
+            <Route path="/product/:categorySlug/:productSlug" element={<ProductDetail />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
