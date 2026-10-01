@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { CreditCard, User, UserPlus, LogIn } from "lucide-react";
 const Login = () => {
   const { loginMember, registerCustomer, loginCustomer, isMember, memberName, customer } = useMember();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state as { from?: string } | null)?.from || "/";
   const [memberNumber, setMemberNumber] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -48,7 +50,7 @@ const Login = () => {
                   const ok = loginMember(memberNumber);
                   if (ok) {
                     toast.success(`Welcome ${memberName || "Member"}!`);
-                    navigate("/");
+                    navigate(returnTo, { replace: true });
                   } else {
                     toast.error("Member not recognized. Ask admin to add your number.");
                   }
@@ -81,7 +83,7 @@ const Login = () => {
                   const ok = loginCustomer(customerPhone);
                   if (ok) {
                     toast.success("Customer logged in");
-                    navigate("/");
+                    navigate(returnTo, { replace: true });
                   } else {
                     toast.error("Customer not found, please register");
                   }
@@ -110,7 +112,7 @@ const Login = () => {
                   });
                   if (ok) {
                     toast.success("Customer registered and logged in");
-                    navigate("/");
+                    navigate(returnTo, { replace: true });
                   } else {
                     toast.error("Name and phone are required");
                   }

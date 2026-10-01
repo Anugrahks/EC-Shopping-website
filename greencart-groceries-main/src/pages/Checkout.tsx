@@ -99,6 +99,11 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!customer && !isMember) {
+      toast.error("Please login or register before placing an order.");
+      navigate("/login", { state: { from: "/checkout" } });
+      return;
+    }
     if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
       toast.error("Please fill all fields");
       return;
@@ -190,6 +195,31 @@ const Checkout = () => {
   if (items.length === 0) {
     navigate("/cart");
     return null;
+  }
+
+  if (!customer && !isMember) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main id="main-content" className="container mx-auto max-w-2xl px-4 py-12">
+          <h1 className="mb-3 text-3xl font-bold">Sign in to continue checkout</h1>
+          <Card className="space-y-4 p-6">
+            <p className="text-muted-foreground">Please login or register before placing an order. Your cart is saved and will be here after you return.</p>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => navigate("/login", { state: { from: "/checkout" } })}>Login / Register</Button>
+              <Button variant="outline" onClick={() => navigate("/products")}>Continue shopping as guest</Button>
+            </div>
+            <div className="border-t pt-4">
+              <h2 className="mb-3 font-semibold">Your cart · ₹{totalVipPrice}</h2>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {items.map((item) => <li key={`${item.product.id}:${item.variant?.id ?? "default"}`} className="flex justify-between gap-3"><span>{item.product.name} ({item.variant?.unit ?? item.product.unit}) × {item.quantity}</span><span>₹{computeItemPrice(item)}</span></li>)}
+              </ul>
+            </div>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (

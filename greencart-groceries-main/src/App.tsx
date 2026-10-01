@@ -29,7 +29,7 @@ const App = () => (
           <Sonner />
           <SiteStructuredData />
           <BrowserRouter>
-            <Suspense fallback={null}>
+            <Suspense fallback={<main className="grid min-h-[50vh] place-items-center p-8 text-center" role="status" aria-live="polite"><p className="text-muted-foreground">Loading your page…</p></main>}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/products" element={<Products />} />
