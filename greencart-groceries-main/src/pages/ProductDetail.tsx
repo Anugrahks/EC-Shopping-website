@@ -10,14 +10,16 @@ import type { Product } from "@/lib/data";
 import { SEOHead } from "@/components/SEOHead";
 import { slugify } from "@/lib/slug";
 import { products as localProducts } from "@/lib/data";
-import { getCatalogProducts } from "@/lib/use-catalog-products";
+import { getCatalogProducts, useCatalogProducts } from "@/lib/use-catalog-products";
 import { optimizeUnsplashImage } from "@/lib/image-url";
 import { getProductVariants } from "@/lib/product-variants";
+import { ProductCard } from "@/components/ProductCard";
 
 const ProductDetail = () => {
   const { id, categorySlug, productSlug } = useParams();
   const { addToCart } = useCart();
   const { isMember } = useMember();
+  const catalogProducts = useCatalogProducts();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState("default");
   const [loading, setLoading] = useState(true);
@@ -100,6 +102,10 @@ const ProductDetail = () => {
     : 0;
   const basePrice = selectedVariant.discountPrice || selectedVariant.price;
   const vipPrice = product.isTodayOffer ? Math.round(basePrice * 0.9) : basePrice;
+  const relatedProducts = catalogProducts
+    .filter((item) => item.id !== product.id && item.category === product.category)
+    .concat(catalogProducts.filter((item) => item.id !== product.id && item.category !== product.category))
+    .slice(0, 5);
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,9 +134,9 @@ const ProductDetail = () => {
         <Link to="/products" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Shop
         </Link>
-        <div className="grid md:grid-cols-2 gap-10">
-          <div className="rounded-2xl overflow-hidden bg-muted/30 aspect-square">
-            <img src={optimizeUnsplashImage(product.image, 800, 800)} alt={product.name} width="800" height="800" className="w-full h-full object-cover" />
+        <div className="grid items-start gap-8 md:grid-cols-2 md:gap-10">
+          <div className="flex h-[clamp(16rem,55vw,32rem)] items-center justify-center overflow-hidden rounded-2xl bg-white md:h-[min(65vh,34rem)]">
+            <img src={optimizeUnsplashImage(product.image, 800, 800)} alt={product.name} width="800" height="800" className="h-full w-full object-contain" />
           </div>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground">{product.category}</p>
@@ -178,6 +184,18 @@ const ProductDetail = () => {
             </Button>
           </div>
         </div>
+        {relatedProducts.length > 0 && <section className="mt-12 border-t border-border pt-8" aria-labelledby="related-products-heading">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <h2 id="related-products-heading" className="text-2xl font-bold">Similar products</h2>
+              <p className="mt-1 text-sm text-muted-foreground">More from {product.category}</p>
+            </div>
+            <Link to={`/category/${slugify(product.category)}`} className="shrink-0 text-sm font-medium text-primary hover:underline">View all</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {relatedProducts.map((relatedProduct) => <ProductCard key={relatedProduct.id} product={relatedProduct} />)}
+          </div>
+        </section>}
       </main>
       <Footer />
     </div>
