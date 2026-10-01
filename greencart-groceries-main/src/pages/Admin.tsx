@@ -574,9 +574,9 @@ const Admin = () => {
               <DialogTitle>{editingProductId ? "Edit Product" : "Add Product"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><Label htmlFor="product-name">Name</Label><Input id="product-name" value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-name">Name *</Label><Input id="product-name" value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} /></div>
               <div className="space-y-2">
-                <Label htmlFor="product-category">Category</Label>
+                <Label htmlFor="product-category">Category *</Label>
                 <select
                   id="product-category"
                   value={productForm.category}
@@ -592,7 +592,7 @@ const Admin = () => {
               <div className="space-y-2"><Label htmlFor="product-price">Regular price (₹) *</Label><Input id="product-price" type="number" min="0.01" step="0.01" placeholder="120" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /><p className="text-xs text-muted-foreground">Required. Must be higher than the sale price.</p></div>
               <div className="space-y-2"><Label htmlFor="product-sale-price">Sale price (₹, optional)</Label><Input id="product-sale-price" type="number" min="0.01" step="0.01" placeholder="114" value={productForm.discountPrice} onChange={(event) => setProductForm({ ...productForm, discountPrice: event.target.value })} /></div>
               <div className="space-y-2"><Label htmlFor="product-stock">Stock quantity *</Label><Input id="product-stock" type="number" min="0" step="1" placeholder="10" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} /><p className="text-xs text-muted-foreground">Required. Enter a whole number.</p></div>
-              <div className="space-y-2"><Label htmlFor="product-unit">Unit</Label><Input id="product-unit" placeholder="e.g. 1kg" value={productForm.unit} onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-unit">Main pack size / unit *</Label><Input id="product-unit" placeholder="e.g. 1kg" value={productForm.unit} onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })} /></div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Additional pack sizes (optional)</Label>
                 <p className="text-xs text-muted-foreground">Enter a separate size, regular price, optional sale price, and stock for each pack. The main size above remains available too.</p>
@@ -610,12 +610,12 @@ const Admin = () => {
                 </div>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="product-image">Upload product image</Label>
+                <Label htmlFor="product-image">Upload product image (optional)</Label>
                 <Input id="product-image" type="file" accept="image/*" onChange={(event) => handleProductImageUpload(event.target.files?.[0])} className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground" />
                 <p className="text-xs text-muted-foreground">Choose an image up to 10 MB. It will be resized and saved with this product.</p>
                 {productForm.image && <img src={productForm.image} alt="Product image preview" className="h-32 w-32 rounded-lg border object-cover" />}
               </div>
-              <div className="space-y-2 sm:col-span-2"><Label htmlFor="product-description">Description</Label><Textarea id="product-description" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></div>
+              <div className="space-y-2 sm:col-span-2"><Label htmlFor="product-description">Description (optional)</Label><Textarea id="product-description" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Cancel</Button>
