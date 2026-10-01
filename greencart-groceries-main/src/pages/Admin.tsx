@@ -64,6 +64,8 @@ const Admin = () => {
   const [newMemberNumber, setNewMemberNumber] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
   const [newCategory, setNewCategory] = useState({ name: "", icon: "", image: "" });
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryEditForm, setCategoryEditForm] = useState({ name: "", icon: "", image: "" });
   const [productsList, setProductsList] = useState<Product[]>(initialProducts);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -380,6 +382,72 @@ const Admin = () => {
       toast.success("Footer contact details saved and synced to all devices.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save the contact details.");
+    }
+  };
+
+  const startEditingCategory = (category: typeof initialCategories[number]) => {
+    setEditingCategoryId(category.id);
+    setCategoryEditForm({ name: category.name, icon: category.icon, image: category.image });
+  };
+
+  const saveCategoryChanges = async (categoryId: string) => {
+    const name = categoryEditForm.name.trim();
+    if (!name) {
+      toast.error("Category name is required.");
+      return;
+    }
+    if (categoriesList.some((category) => category.id !== categoryId && category.name.trim().toLowerCase() === name.toLowerCase())) {
+      toast.error("A category with this name already exists.");
+      return;
+    }
+
+    const previousCategory = categoriesList.find((category) => category.id === categoryId);
+    if (!previousCategory) return;
+    const nextCategories = categoriesList.map((category) => category.id === categoryId
+      ? { ...category, name, icon: categoryEditForm.icon.trim() || "🛍️", image: categoryEditForm.image.trim() }
+      : category);
+    const nextProducts = productsList.map((product) => product.category === previousCategory.name
+      ? { ...product, category: name }
+      : product);
+
+    try {
+      await Promise.all([
+        saveSharedCatalog("/api/admin/categories", nextCategories),
+        saveSharedCatalog("/api/admin/products", nextProducts),
+      ]);
+      setCategoriesList(nextCategories);
+      setProductsList(nextProducts);
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+      setEditingCategoryId(null);
+      toast.success("Category updated and synced across devices.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the category changes.");
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    const category = categoriesList.find((item) => item.id === categoryId);
+    if (!category) return;
+    const assignedProducts = productsList.filter((product) => product.category === category.name);
+    if (assignedProducts.length > 0) {
+      toast.error(`Move or delete the ${assignedProducts.length} product${assignedProducts.length === 1 ? "" : "s"} in “${category.name}” before deleting this category.`);
+      return;
+    }
+    if (categoriesList.length <= 1) {
+      toast.error("At least one category must remain.");
+      return;
+    }
+    if (!window.confirm(`Delete the “${category.name}” category? This cannot be undone.`)) return;
+
+    const nextCategories = categoriesList.filter((item) => item.id !== categoryId);
+    try {
+      await saveSharedCatalog("/api/admin/categories", nextCategories);
+      setCategoriesList(nextCategories);
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
+      toast.success("Category deleted and synced across devices.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete the category.");
     }
   };
 
@@ -751,6 +819,10 @@ const Admin = () => {
                         toast.error("Category name is required");
                         return;
                       }
+                      if (categoriesList.some((category) => category.name.trim().toLowerCase() === newCategory.name.trim().toLowerCase())) {
+                        toast.error("A category with this name already exists.");
+                        return;
+                      }
                       const cat = {
                         id: `${Date.now()}`,
                         name: newCategory.name.trim(),
@@ -770,14 +842,37 @@ const Admin = () => {
                   </Button>
                 </div>
               </div>
-              <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {categoriesList.map((cat) => (
-                  <Card key={cat.id} className="p-4 flex items-center gap-3">
-                    <div className="w-12 h-12 grid place-items-center rounded-full bg-muted text-xl">{cat.icon}</div>
-                    <div className="flex-1">
-                      <p className="font-medium">{cat.name}</p>
-                      <p className="text-xs text-muted-foreground">{productsList.filter((p) => p.category === cat.name).length} products</p>
-                    </div>
+                  <Card key={cat.id} className="space-y-3 p-4">
+                    {editingCategoryId === cat.id ? (
+                      <>
+                        <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                          <div className="space-y-1"><Label htmlFor={`edit-category-icon-${cat.id}`}>Icon</Label><Input id={`edit-category-icon-${cat.id}`} maxLength={16} value={categoryEditForm.icon} onChange={(event) => setCategoryEditForm((current) => ({ ...current, icon: event.target.value }))} /></div>
+                          <div className="space-y-1"><Label htmlFor={`edit-category-name-${cat.id}`}>Name</Label><Input id={`edit-category-name-${cat.id}`} maxLength={100} value={categoryEditForm.name} onChange={(event) => setCategoryEditForm((current) => ({ ...current, name: event.target.value }))} /></div>
+                        </div>
+                        <div className="space-y-1"><Label htmlFor={`edit-category-image-${cat.id}`}>Image URL (optional)</Label><Input id={`edit-category-image-${cat.id}`} value={categoryEditForm.image} onChange={(event) => setCategoryEditForm((current) => ({ ...current, image: event.target.value }))} /></div>
+                        <p className="text-xs text-muted-foreground">Renaming also updates products assigned to this category.</p>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => setEditingCategoryId(null)}>Cancel</Button>
+                          <Button type="button" size="sm" onClick={() => void saveCategoryChanges(cat.id)}>Save</Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          {cat.image ? <img src={cat.image} alt="" className="h-12 w-12 rounded-full bg-muted object-cover" /> : <div className="grid h-12 w-12 place-items-center rounded-full bg-muted text-xl">{cat.icon}</div>}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium">{cat.name}</p>
+                            <p className="text-xs text-muted-foreground">{productsList.filter((product) => product.category === cat.name).length} products</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t pt-3">
+                          <Button type="button" variant="outline" size="sm" onClick={() => startEditingCategory(cat)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
+                          <Button type="button" variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => void deleteCategory(cat.id)}><Trash2 className="mr-1 h-3.5 w-3.5" />Delete</Button>
+                        </div>
+                      </>
+                    )}
                   </Card>
                 ))}
               </div>
