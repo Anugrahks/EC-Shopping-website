@@ -102,9 +102,10 @@ const ProductDetail = () => {
     : 0;
   const basePrice = selectedVariant.discountPrice || selectedVariant.price;
   const vipPrice = product.isTodayOffer ? Math.round(basePrice * 0.9) : basePrice;
-  const relatedProducts = catalogProducts
+  const recommendationCatalog = catalogProducts.length > 1 ? catalogProducts : localProducts;
+  const relatedProducts = recommendationCatalog
     .filter((item) => item.id !== product.id && item.category === product.category)
-    .concat(catalogProducts.filter((item) => item.id !== product.id && item.category !== product.category))
+    .concat(recommendationCatalog.filter((item) => item.id !== product.id && item.category !== product.category))
     .slice(0, 5);
 
   return (
@@ -135,7 +136,7 @@ const ProductDetail = () => {
           <ArrowLeft className="h-4 w-4" /> Back to Shop
         </Link>
         <div className="grid items-start gap-8 md:grid-cols-2 md:gap-10">
-          <div className="flex h-[clamp(16rem,55vw,32rem)] items-center justify-center overflow-hidden rounded-2xl bg-white md:h-[min(65vh,34rem)]">
+          <div className="flex h-56 items-center justify-center overflow-hidden rounded-2xl bg-white sm:h-64 md:h-80">
             <img src={optimizeUnsplashImage(product.image, 800, 800)} alt={product.name} width="800" height="800" className="h-full w-full object-contain" />
           </div>
           <div className="space-y-5">
