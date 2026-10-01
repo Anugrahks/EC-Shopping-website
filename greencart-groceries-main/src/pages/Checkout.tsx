@@ -21,6 +21,7 @@ const Checkout = () => {
   const { isMember, memberName, customer } = useMember();
   const navigate = useNavigate();
   const [placed, setPlaced] = useState(false);
+  const [savedOnThisDevice, setSavedOnThisDevice] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
   const [sharedLocation, setSharedLocation] = useState<SharedLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
@@ -44,7 +45,7 @@ const Checkout = () => {
 
   const totalVipPrice = items.reduce((sum, item) => sum + computeItemPrice(item), 0);
 
-  const saveOrder = (orderId: string) => {
+  const saveOrder = (orderId: string, notificationStatus: "sent" | "local-only") => {
     const existing = localStorage.getItem(ORDERS_KEY);
     const orders = existing ? JSON.parse(existing) : [];
     const newOrder = {
@@ -56,6 +57,7 @@ const Checkout = () => {
       date: new Date().toLocaleString(),
       createdAt: new Date().toISOString(),
       status: "pending",
+      notificationStatus,
       deliveryLocation: sharedLocation,
       items: items.map((item) => {
         const base = item.product.discountPrice || item.product.price;
@@ -137,12 +139,24 @@ const Checkout = () => {
         }),
       });
       const result = await orderResponse.json();
+      if (
+        orderResponse.status === 503 &&
+        typeof result.message === "string" &&
+        result.message.includes("not configured")
+      ) {
+        saveOrder(`local_${Date.now()}`, "local-only");
+        setSavedOnThisDevice(true);
+        setPlaced(true);
+        clearCart();
+        toast.warning("Order saved on this device, but the shop has not been notified.");
+        return;
+      }
       if (!orderResponse.ok || !result.success || typeof result.orderId !== "string") {
         throw new Error(result.message || "We could not send your order to the shop. Please try again.");
       }
 
       try {
-        saveOrder(result.orderId);
+        saveOrder(result.orderId, "sent");
       } catch {
         toast.error("Your order was sent to the shop, but could not be saved on this device.");
       }
@@ -162,8 +176,12 @@ const Checkout = () => {
         <Navbar />
         <div className="container mx-auto px-4 py-20 text-center space-y-4">
           <CheckCircle className="h-20 w-20 text-primary mx-auto" />
-          <h1 className="text-3xl font-bold">Order Placed!</h1>
-          <p className="text-muted-foreground">Your order has been placed successfully. You will pay ₹{totalVipPrice || 0} on delivery.</p>
+          <h1 className="text-3xl font-bold">{savedOnThisDevice ? "Order Saved on This Device" : "Order Placed!"}</h1>
+          <p className="text-muted-foreground">
+            {savedOnThisDevice
+              ? "Your order is saved in this browser, but the shop has not received it. Please contact the shop to confirm your order."
+              : `Your order has been placed successfully. You will pay ₹${totalVipPrice || 0} on delivery.`}
+          </p>
           <Button onClick={() => navigate("/")} className="rounded-full">Continue Shopping</Button>
         </div>
         <Footer />
