@@ -34,20 +34,23 @@ export function TodayOffers() {
     <section className="bg-[#f0fdf4] py-8">
       <div className="container mx-auto px-4">
         {showBanner ? (
-          <div className="relative mb-6 min-h-48 overflow-hidden rounded-2xl bg-emerald-900 sm:min-h-64" role="region" aria-roledescription="carousel" aria-label="Today's offers banners">
-            <img src={optimizeUnsplashImage(banner.image, 1200, 600)} alt={banner.title || "Today's grocery offers"} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
-            <div className="relative flex min-h-48 max-w-2xl flex-col items-start justify-center gap-3 p-6 text-white sm:min-h-64 sm:p-10">
-              <h2 className="text-3xl font-bold sm:text-4xl">{banner.title || "Today's Offers"}</h2>
-              <p className="text-sm sm:text-base">{banner.subtitle}</p>
-              <Link to="/products?offers=true" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">Shop today's offers</Link>
+          <div className="relative mb-6 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" role="region" aria-roledescription="carousel" aria-label="Today's offers banners">
+            <div className="grid md:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.8fr)]">
+              <div className="flex min-h-48 items-center justify-center bg-slate-50 p-2 sm:min-h-64 sm:p-4 md:min-h-[24rem] md:p-6">
+                <img src={optimizeUnsplashImage(banner.image, 1600, 1200)} alt={banner.title || "Today's grocery offers"} className="max-h-[72vh] w-full object-contain" loading="lazy" />
+              </div>
+              <div className="flex flex-col items-start justify-center gap-3 p-5 sm:p-8 md:p-10">
+                <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">{banner.title || "Today's Offers"}</h2>
+                <p className="text-sm text-slate-600 sm:text-base">{banner.subtitle}</p>
+                <Link to="/products?offers=true" className="rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Shop today's offers</Link>
+              </div>
             </div>
             {banners.length > 1 && <>
               <div className="absolute right-4 top-4 flex gap-2">
                 <button type="button" aria-label="Previous offer banner" onClick={showPreviousBanner} className="grid h-10 w-10 place-items-center rounded-full bg-black/45 text-white hover:bg-black/70"><ArrowLeft className="h-5 w-5" /></button>
                 <button type="button" aria-label="Next offer banner" onClick={showNextBanner} className="grid h-10 w-10 place-items-center rounded-full bg-black/45 text-white hover:bg-black/70"><ArrowRight className="h-5 w-5" /></button>
               </div>
-              <div className="absolute bottom-4 right-5 flex gap-2" aria-label="Choose offer banner">
+              <div className="absolute bottom-4 left-5 flex gap-2 rounded-full bg-black/45 px-3 py-2" aria-label="Choose offer banner">
                 {banners.map((item, index) => <button key={item.id} type="button" aria-label={`Show offer banner ${index + 1}`} aria-current={activeBannerIndex === index} onClick={() => setActiveBannerIndex(index)} className={`h-2.5 rounded-full transition-all ${activeBannerIndex === index ? "w-7 bg-white" : "w-2.5 bg-white/60 hover:bg-white"}`} />)}
               </div>
             </>}
