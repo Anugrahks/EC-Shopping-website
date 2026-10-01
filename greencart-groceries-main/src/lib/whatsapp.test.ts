@@ -53,4 +53,37 @@ describe("sendWhatsAppOrder", () => {
     expect(result.status).toBe(400);
     expect(result.body.success).toBe(false);
   });
+
+  it("rejects online orders below ₹500 before contacting WhatsApp", async () => {
+    let called = false;
+    const result = await sendWhatsAppOrder({ ...validOrder, total: 499.99 }, credentials, async () => {
+      called = true;
+      return new Response("{}", { status: 200 });
+    });
+
+    expect(result.status).toBe(400);
+    expect(result.body.message).toContain("₹500");
+    expect(called).toBe(false);
+  });
+
+  it("accepts an online order of exactly ₹500", async () => {
+    const result = await sendWhatsAppOrder({ ...validOrder, total: 500 }, credentials, async () => new Response("{}", { status: 200 }));
+
+    expect(result.status).toBe(200);
+    expect(result.body.success).toBe(true);
+  });
+
+  it("includes the selected pack size in the shop notification", async () => {
+    let message = "";
+    const result = await sendWhatsAppOrder({
+      ...validOrder,
+      items: [{ productName: "Tomato (200 g)", quantity: 2, amount: 160 }],
+    }, credentials, async (_url, options) => {
+      message = JSON.parse(options.body).template.components[0].parameters[0].text;
+      return new Response("{}", { status: 200 });
+    });
+
+    expect(result.status).toBe(200);
+    expect(message).toContain("Tomato (200 g)");
+  });
 });

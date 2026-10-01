@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { CartItem, Product } from "./data";
+import { CartItem, Product, ProductVariant } from "./data";
+import { getCartLineId, getCartItemPrice } from "./product-variants";
 import { toast } from "sonner";
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, variant?: ProductVariant) => void;
+  removeFromCart: (lineId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -29,38 +30,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addToCart = useCallback((product: Product) => {
-    if (product.stock <= 0) {
+  const addToCart = useCallback((product: Product, variant?: ProductVariant) => {
+    const stock = variant?.stock ?? product.stock;
+    const unit = variant?.unit ?? product.unit;
+    if (stock <= 0) {
       toast.error(`${product.name} is out of stock`);
       return;
     }
+    const selectedLineId = getCartLineId({ product, quantity: 1, variant });
     setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing && existing.quantity >= product.stock) {
-        toast.error(`Only ${product.stock} ${product.unit} available`);
+      const existing = prev.find((i) => getCartLineId(i) === selectedLineId);
+      if (existing && existing.quantity >= stock) {
+        toast.error(`Only ${stock} ${unit} available`);
         return prev;
       }
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          getCartLineId(i) === selectedLineId ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, variant, quantity: 1 }];
     });
-    toast.success(`${product.name} added to cart`);
+    toast.success(`${product.name} (${unit}) added to cart`);
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => {
-    setItems((prev) => prev.filter((i) => i.product.id !== productId));
+  const removeFromCart = useCallback((lineId: string) => {
+    setItems((prev) => prev.filter((i) => getCartLineId(i) !== lineId));
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((lineId: string, quantity: number) => {
     if (quantity <= 0) {
-      setItems((prev) => prev.filter((i) => i.product.id !== productId));
+      setItems((prev) => prev.filter((i) => getCartLineId(i) !== lineId));
       return;
     }
-    setItems((prev) => prev.map((item) => item.product.id === productId
-      ? { ...item, quantity: Math.min(quantity, item.product.stock) }
+    setItems((prev) => prev.map((item) => getCartLineId(item) === lineId
+      ? { ...item, quantity: Math.min(quantity, item.variant?.stock ?? item.product.stock) }
       : item));
   }, []);
 
@@ -68,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = items.reduce(
-    (sum, i) => sum + (i.product.discountPrice || i.product.price) * i.quantity,
+    (sum, item) => sum + getCartItemPrice(item) * item.quantity,
     0
   );
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useMember } from "@/lib/member-context";
-import { products as initialProducts, categories as initialCategories, Product } from "@/lib/data";
+import { products as initialProducts, categories as initialCategories, Product, ProductVariant } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { TODAY_OFFERS_BANNER_KEY, getTodayOffersBanners, type TodayOffersBanner } from "@/lib/today-offers-banner";
 import { getOrderReport, type OrderStatus } from "@/lib/order-report";
+import { slugify } from "@/lib/slug";
+import { getProductVariants } from "@/lib/product-variants";
 
 const ORDERS_KEY = "gc_orders";
 const CATEGORIES_KEY = "gc_categories";
@@ -43,7 +45,7 @@ const Admin = () => {
   const [productsList, setProductsList] = useState<Product[]>(initialProducts);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", category: "", price: "", discountPrice: "", stock: "", unit: "", image: "", description: "" });
+  const [productForm, setProductForm] = useState({ name: "", category: "", price: "", discountPrice: "", stock: "", unit: "", variantOptions: "", image: "", description: "" });
   const [categoriesList, setCategoriesList] = useState(initialCategories);
   const [orders, setOrders] = useState<SavedOrder[]>([]);
   const [offersBanners, setOffersBanners] = useState<TodayOffersBanner[]>(getTodayOffersBanners);
@@ -85,9 +87,10 @@ const Admin = () => {
       discountPrice: product.discountPrice ? String(product.discountPrice) : "",
       stock: String(product.stock),
       unit: product.unit,
+      variantOptions: (product.variants ?? []).map((variant) => `${variant.unit} | ${variant.price} | ${variant.discountPrice ?? ""} | ${variant.stock}`).join("\n"),
       image: product.image,
       description: product.description,
-    } : { name: "", category: defaultCategory, price: "", discountPrice: "", stock: "", unit: "", image: "", description: "" });
+    } : { name: "", category: defaultCategory, price: "", discountPrice: "", stock: "", unit: "", variantOptions: "", image: "", description: "" });
     setProductDialogOpen(true);
   };
 
@@ -223,6 +226,24 @@ const Admin = () => {
       toast.error("Sale price must be greater than zero and below the regular price");
       return;
     }
+    const variantRows = productForm.variantOptions.split("\n").map((line) => line.trim()).filter(Boolean);
+    const variants: ProductVariant[] = [];
+    for (const row of variantRows) {
+      const [unitValue, priceValue, saleValue, stockValue, ...extra] = row.split("|").map((part) => part.trim());
+      const variantPrice = Number(priceValue);
+      const variantStock = Number(stockValue);
+      const variantSalePrice = saleValue ? Number(saleValue) : undefined;
+      if (!unitValue || !stockValue || extra.length > 0 || !Number.isFinite(variantPrice) || variantPrice <= 0 || !Number.isInteger(variantStock) || variantStock < 0 || (variantSalePrice !== undefined && (!Number.isFinite(variantSalePrice) || variantSalePrice <= 0 || variantSalePrice >= variantPrice))) {
+        toast.error(`Invalid pack-size row: ${row}. Use size | price | sale price (optional) | stock.`);
+        return;
+      }
+      const normalizedUnit = unitValue.toLocaleLowerCase();
+      if (normalizedUnit === productForm.unit.trim().toLocaleLowerCase() || variants.some((variant) => variant.unit.toLocaleLowerCase() === normalizedUnit)) {
+        toast.error(`Pack size “${unitValue}” is duplicated. Each pack size must be unique.`);
+        return;
+      }
+      variants.push({ id: slugify(unitValue), unit: unitValue, price: variantPrice, discountPrice: variantSalePrice, stock: variantStock });
+    }
     const product: Product = {
       id: editingProductId || `${Date.now()}`,
       name: productForm.name.trim(),
@@ -231,6 +252,7 @@ const Admin = () => {
       discountPrice,
       stock,
       unit: productForm.unit.trim(),
+      variants,
       image: productForm.image.trim() || "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=600&fit=crop",
       description: productForm.description.trim() || `${productForm.name.trim()} from EC SHOPPING.`,
       rating: editingProductId ? productsList.find((item) => item.id === editingProductId)?.rating || 4 : 4,
@@ -396,6 +418,11 @@ const Admin = () => {
               <div className="space-y-2"><Label htmlFor="product-stock">Stock</Label><Input id="product-stock" type="number" min="0" step="1" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} /></div>
               <div className="space-y-2"><Label htmlFor="product-unit">Unit</Label><Input id="product-unit" placeholder="e.g. 1kg" value={productForm.unit} onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })} /></div>
               <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="product-variants">Additional pack sizes (optional)</Label>
+                <Textarea id="product-variants" placeholder={"100 g | 18 | 15 | 40\n200 g | 34 | | 30\n500 g | 80 | | 20"} value={productForm.variantOptions} onChange={(event) => setProductForm({ ...productForm, variantOptions: event.target.value })} />
+                <p className="text-xs text-muted-foreground">One pack per line: size | regular price | sale price (optional) | stock. The main size and its price above remain available too. Enter accurate prices and stock for each size.</p>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="product-image">Upload product image</Label>
                 <Input id="product-image" type="file" accept="image/*" onChange={(event) => handleProductImageUpload(event.target.files?.[0])} className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground" />
                 <p className="text-xs text-muted-foreground">Choose an image up to 10 MB. It will be resized and saved with this product.</p>
@@ -451,6 +478,7 @@ const Admin = () => {
                         <td className="p-3">
                           ₹{p.discountPrice || p.price}
                           {p.discountPrice && <span className="text-muted-foreground line-through ml-1 text-xs">₹{p.price}</span>}
+                          {getProductVariants(p).length > 1 ? <span className="ml-1 text-xs text-muted-foreground">+{getProductVariants(p).length - 1} sizes</span> : null}
                         </td>
                         <td className="p-3 hidden md:table-cell">{p.stock}</td>
                         <td className="p-3">

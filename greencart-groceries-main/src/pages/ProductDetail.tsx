@@ -12,12 +12,14 @@ import { slugify } from "@/lib/slug";
 import { products as localProducts } from "@/lib/data";
 import { getCatalogProducts } from "@/lib/use-catalog-products";
 import { optimizeUnsplashImage } from "@/lib/image-url";
+import { getProductVariants } from "@/lib/product-variants";
 
 const ProductDetail = () => {
   const { id, categorySlug, productSlug } = useParams();
   const { addToCart } = useCart();
   const { isMember } = useMember();
   const [product, setProduct] = useState<Product | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState("default");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,10 +86,12 @@ const ProductDetail = () => {
     return <Navigate replace to={`/product/${slugify(product.category)}/${slugify(product.name)}`} />;
   }
 
-  const discount = product.discountPrice
-    ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
+  const variants = getProductVariants(product);
+  const selectedVariant = variants.find((variant) => variant.id === selectedVariantId) ?? variants[0];
+  const discount = selectedVariant.discountPrice
+    ? Math.round(((selectedVariant.price - selectedVariant.discountPrice) / selectedVariant.price) * 100)
     : 0;
-  const basePrice = product.discountPrice || product.price;
+  const basePrice = selectedVariant.discountPrice || selectedVariant.price;
   const vipPrice = product.isTodayOffer ? Math.round(basePrice * 0.9) : basePrice;
 
   return (
@@ -106,8 +110,8 @@ const ProductDetail = () => {
           offers: {
             "@type": "Offer",
             priceCurrency: "INR",
-            price: product.discountPrice || product.price,
-            availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            price: basePrice,
+            availability: selectedVariant.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
             url: window.location.href,
           },
         }}
@@ -134,9 +138,9 @@ const ProductDetail = () => {
             </div>
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-bold text-primary">₹{isMember && product.isTodayOffer ? vipPrice : basePrice}</span>
-              {product.discountPrice && (
+              {selectedVariant.discountPrice && (
                 <>
-                  <span className="text-xl line-through text-muted-foreground">₹{product.price}</span>
+                  <span className="text-xl line-through text-muted-foreground">₹{selectedVariant.price}</span>
                   <span className="bg-secondary text-secondary-foreground text-sm font-bold px-2 py-1 rounded">{discount}% OFF</span>
                 </>
               )}
@@ -145,17 +149,23 @@ const ProductDetail = () => {
               <div className="text-sm text-success">VIP offer: ₹{vipPrice} (10% extra VIP savings)</div>
             )}
             <p className="text-muted-foreground">{product.description}</p>
-            <p className="text-sm">Unit: <span className="font-medium">{product.unit}</span></p>
+            {variants.length > 1 && <div className="space-y-2">
+              <label htmlFor="product-size" className="text-sm font-medium">Choose pack size</label>
+              <select id="product-size" value={selectedVariant.id} onChange={(event) => setSelectedVariantId(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                {variants.map((variant) => <option key={variant.id} value={variant.id} disabled={variant.stock <= 0}>{variant.unit} — ₹{variant.discountPrice || variant.price}{variant.stock <= 0 ? " (out of stock)" : ""}</option>)}
+              </select>
+            </div>}
+            <p className="text-sm">Unit: <span className="font-medium">{selectedVariant.unit}</span></p>
             <p className="text-sm">
-              Stock: <span className={`font-medium ${product.stock > 0 ? "text-primary" : "text-destructive"}`}>
-                {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
+              Stock: <span className={`font-medium ${selectedVariant.stock > 0 ? "text-primary" : "text-destructive"}`}>
+                {selectedVariant.stock > 0 ? `${selectedVariant.stock} available` : "Out of stock"}
               </span>
             </p>
             <Button
               size="lg"
               className="rounded-full gap-2"
-              onClick={() => addToCart(product)}
-              disabled={product.stock === 0}
+              onClick={() => addToCart(product, selectedVariant.id === "default" ? undefined : selectedVariant)}
+              disabled={selectedVariant.stock === 0}
             >
               <ShoppingCart className="h-5 w-5" /> Add to Cart
             </Button>

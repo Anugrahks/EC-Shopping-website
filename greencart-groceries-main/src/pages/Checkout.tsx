@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useMember } from "@/lib/member-context";
 import { CheckCircle, MapPin } from "lucide-react";
 import type { CartItem } from "@/lib/data";
+import { getCartItemPrice, MINIMUM_ORDER_TOTAL } from "@/lib/product-variants";
 
 const ORDERS_KEY = "gc_orders";
 type SharedLocation = { latitude: number; longitude: number; accuracy: number };
@@ -38,10 +39,7 @@ const Checkout = () => {
     }));
   }, [customer]);
 
-  const computeItemPrice = (item: CartItem) => {
-    const base = item.product.discountPrice || item.product.price;
-    return isMember && item.product.isTodayOffer ? Math.round(base * 0.9) * item.quantity : base * item.quantity;
-  };
+  const computeItemPrice = (item: CartItem) => getCartItemPrice(item, isMember) * item.quantity;
 
   const totalVipPrice = items.reduce((sum, item) => sum + computeItemPrice(item), 0);
 
@@ -59,13 +57,11 @@ const Checkout = () => {
       status: "pending",
       notificationStatus,
       deliveryLocation: sharedLocation,
-      items: items.map((item) => {
-        const base = item.product.discountPrice || item.product.price;
-        const amount = isMember && item.product.isTodayOffer
-          ? Math.round(base * 0.9) * item.quantity
-          : base * item.quantity;
-        return { productName: item.product.name, quantity: item.quantity, amount };
-      }),
+      items: items.map((item) => ({
+        productName: `${item.product.name} (${item.variant?.unit ?? item.product.unit})`,
+        quantity: item.quantity,
+        amount: computeItemPrice(item),
+      })),
     };
     localStorage.setItem(ORDERS_KEY, JSON.stringify([newOrder, ...orders]));
     return newOrder;
@@ -115,6 +111,10 @@ const Checkout = () => {
       toast.error("Enter a valid 6-digit Indian pincode");
       return;
     }
+    if (totalVipPrice < MINIMUM_ORDER_TOTAL) {
+      toast.error(`Online orders require a minimum total of ₹${MINIMUM_ORDER_TOTAL}. Add ₹${(MINIMUM_ORDER_TOTAL - totalVipPrice).toFixed(2)} more.`);
+      return;
+    }
     if (isSubmitting) return;
 
     setIsSubmitting(true);
@@ -128,13 +128,11 @@ const Checkout = () => {
           customerPhone: form.phone.trim(),
           deliveryAddress,
           total: totalVipPrice,
-          items: items.map((item) => {
-            const base = item.product.discountPrice || item.product.price;
-            const amount = isMember && item.product.isTodayOffer
-              ? Math.round(base * 0.9) * item.quantity
-              : base * item.quantity;
-            return { productName: item.product.name, quantity: item.quantity, amount };
-          }),
+          items: items.map((item) => ({
+            productName: `${item.product.name} (${item.variant?.unit ?? item.product.unit})`,
+            quantity: item.quantity,
+            amount: computeItemPrice(item),
+          })),
           deliveryLocation: sharedLocation,
         }),
       });
@@ -199,6 +197,7 @@ const Checkout = () => {
       <Navbar />
       <main id="main-content" className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-3">Checkout</h1>
+        {totalVipPrice < MINIMUM_ORDER_TOTAL && <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">Online orders require a minimum of ₹{MINIMUM_ORDER_TOTAL}. Add ₹{(MINIMUM_ORDER_TOTAL - totalVipPrice).toFixed(2)} more to continue.</div>}
         {isMember && (
           <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-800">
             You have an EC Shopping Card ({memberName}). Enjoy VIP offers at checkout!
@@ -258,19 +257,19 @@ const Checkout = () => {
                 </div>
               </div>
             </Card>
-            <Button type="submit" size="lg" className="w-full rounded-full" disabled={isSubmitting}>
+            <Button type="submit" size="lg" className="w-full rounded-full" disabled={isSubmitting || totalVipPrice < MINIMUM_ORDER_TOTAL}>
               {isSubmitting ? "Sending order…" : `Place Order — ₹${totalVipPrice}`}
             </Button>
           </form>
           <Card className="p-6 h-fit space-y-4">
             <h2 className="text-lg font-bold">Order Summary</h2>
             <div className="space-y-3">
-              {items.map(({ product, quantity }) => {
-                const base = product.discountPrice || product.price;
-                const itemPrice = isMember && product.isTodayOffer ? Math.round(base * 0.9) : base;
+              {items.map((item) => {
+                const { product, quantity, variant } = item;
+                const itemPrice = getCartItemPrice(item, isMember);
                 return (
-                  <div key={product.id} className="flex justify-between text-sm">
-                    <span>{product.name} × {quantity}</span>
+                  <div key={`${product.id}:${variant?.id ?? "default"}`} className="flex justify-between text-sm">
+                    <span>{product.name} ({variant?.unit ?? product.unit}) × {quantity}</span>
                     <span>₹{itemPrice * quantity}</span>
                   </div>
                 );

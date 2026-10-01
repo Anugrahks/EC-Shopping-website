@@ -11,6 +11,15 @@ export interface Product {
   unit: string;
   isTodayOffer?: boolean;
   isPopular?: boolean;
+  variants?: ProductVariant[];
+}
+
+export interface ProductVariant {
+  id: string;
+  unit: string;
+  price: number;
+  discountPrice?: number;
+  stock: number;
 }
 
 export interface Category {
@@ -23,6 +32,7 @@ export interface Category {
 export interface CartItem {
   product: Product;
   quantity: number;
+  variant?: ProductVariant;
 }
 
 export interface Banner {

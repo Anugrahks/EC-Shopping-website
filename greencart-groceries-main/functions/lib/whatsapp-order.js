@@ -1,4 +1,5 @@
 const json = (body, status) => ({ body, status });
+const MINIMUM_ORDER_TOTAL = 500;
 
 const normalizePhoneNumber = (value = "") => value.replace(/\D/g, "");
 
@@ -20,6 +21,13 @@ export async function sendWhatsAppOrder(order, env = {}, fetchRequest = fetch) {
   if (!customerName || customerName.length > 120 || !customerPhone || customerPhone.length > 30 ||
       !deliveryAddress || deliveryAddress.length > 500 || !Number.isFinite(total) || total < 0 || !validItems) {
     return json({ success: false, message: "Please check your delivery details and cart, then try again." }, 400);
+  }
+
+  if (total < MINIMUM_ORDER_TOTAL) {
+    return json({
+      success: false,
+      message: `Online orders require a minimum total of ₹${MINIMUM_ORDER_TOTAL}.`,
+    }, 400);
   }
 
   const recipient = normalizePhoneNumber(env.WHATSAPP_ADMIN_PHONE_NUMBER);
