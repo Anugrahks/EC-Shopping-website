@@ -386,8 +386,18 @@ const Admin = () => {
   const saveProduct = () => {
     const price = Number(productForm.price);
     const stock = Number(productForm.stock);
-    if (!productForm.name.trim() || !productForm.category.trim() || !productForm.unit.trim() || !Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < 0) {
-      toast.error("Enter a name, category, unit, valid price, and whole-number stock");
+    if (!productForm.name.trim() || !productForm.category.trim() || !productForm.unit.trim()) {
+      toast.error("Enter the product name, choose a category, and enter its main pack size.");
+      return;
+    }
+    if (!productForm.price.trim() || !Number.isFinite(price) || price <= 0) {
+      toast.error("Enter the regular price. It must be higher than the sale price (for example, regular ₹120 and sale ₹114).");
+      document.getElementById("product-price")?.focus();
+      return;
+    }
+    if (!productForm.stock.trim() || !Number.isInteger(stock) || stock < 0) {
+      toast.error("Enter the stock quantity as a whole number, such as 10.");
+      document.getElementById("product-stock")?.focus();
       return;
     }
     const discountPrice = productForm.discountPrice ? Number(productForm.discountPrice) : undefined;
@@ -579,9 +589,9 @@ const Admin = () => {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2"><Label htmlFor="product-price">Price (₹)</Label><Input id="product-price" type="number" min="0.01" step="0.01" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="product-sale-price">Sale price (optional)</Label><Input id="product-sale-price" type="number" min="0.01" step="0.01" value={productForm.discountPrice} onChange={(event) => setProductForm({ ...productForm, discountPrice: event.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="product-stock">Stock</Label><Input id="product-stock" type="number" min="0" step="1" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-price">Regular price (₹) *</Label><Input id="product-price" type="number" min="0.01" step="0.01" placeholder="120" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /><p className="text-xs text-muted-foreground">Required. Must be higher than the sale price.</p></div>
+              <div className="space-y-2"><Label htmlFor="product-sale-price">Sale price (₹, optional)</Label><Input id="product-sale-price" type="number" min="0.01" step="0.01" placeholder="114" value={productForm.discountPrice} onChange={(event) => setProductForm({ ...productForm, discountPrice: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="product-stock">Stock quantity *</Label><Input id="product-stock" type="number" min="0" step="1" placeholder="10" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} /><p className="text-xs text-muted-foreground">Required. Enter a whole number.</p></div>
               <div className="space-y-2"><Label htmlFor="product-unit">Unit</Label><Input id="product-unit" placeholder="e.g. 1kg" value={productForm.unit} onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })} /></div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Additional pack sizes (optional)</Label>
