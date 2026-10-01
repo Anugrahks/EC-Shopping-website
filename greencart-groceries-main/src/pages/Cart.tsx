@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 const Cart = () => {
   const { items, updateQuantity, removeFromCart } = useCart();
@@ -20,12 +21,12 @@ const Cart = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container mx-auto px-4 py-20 text-center space-y-4">
+        <main id="main-content" className="container mx-auto px-4 py-20 text-center space-y-4">
           <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground" />
-          <h2 className="text-2xl font-bold">Your cart is empty</h2>
+          <h1 className="text-2xl font-bold">Your cart is empty</h1>
           <p className="text-muted-foreground">Add some fresh products to get started!</p>
           <Button asChild><Link to="/products">Shop Now</Link></Button>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -34,15 +35,15 @@ const Cart = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <main id="main-content" className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Shopping Cart</h1>
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-4">
             {items.map(({ product, quantity }) => (
               <Card key={product.id} className="p-4 flex gap-4">
-                <img src={product.image} alt={product.name} className="w-20 h-20 object-cover rounded-lg" />
+                <img src={optimizeUnsplashImage(product.image, 160, 160)} alt={product.name} width="160" height="160" className="w-20 h-20 object-cover rounded-lg" />
                 <div className="flex-1 space-y-1">
-                  <h3 className="font-semibold">{product.name}</h3>
+                  <h2 className="font-semibold">{product.name}</h2>
                   <p className="text-sm text-muted-foreground">{product.unit}</p>
                   <p className="font-bold text-primary">₹{isMember && product.isTodayOffer ? Math.round((product.discountPrice || product.price) * 0.9) : (product.discountPrice || product.price)}</p>
                 </div>
@@ -64,7 +65,7 @@ const Cart = () => {
             ))}
           </div>
           <Card className="p-6 h-fit space-y-4">
-            <h3 className="text-lg font-bold">Order Summary</h3>
+            <h2 className="text-lg font-bold">Order Summary</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -88,7 +89,7 @@ const Cart = () => {
             </Button>
           </Card>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

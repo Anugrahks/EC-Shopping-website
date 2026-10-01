@@ -15,7 +15,7 @@ export function Footer() {
             </p>
           </div>
           <div className="space-y-3">
-            <h4 className="font-semibold">Quick Links</h4>
+            <h2 className="font-semibold">Quick Links</h2>
             <div className="flex flex-col gap-2 text-sm opacity-70">
               <Link to="/" className="hover:opacity-100">Home</Link>
               <Link to="/products" className="hover:opacity-100">Shop</Link>
@@ -24,7 +24,7 @@ export function Footer() {
             </div>
           </div>
           <div className="space-y-3">
-            <h4 className="font-semibold">Categories</h4>
+            <h2 className="font-semibold">Categories</h2>
             <div className="flex flex-col gap-2 text-sm opacity-70">
               <Link to="/products?category=Fruits" className="hover:opacity-100">Fruits</Link>
               <Link to="/products?category=Vegetables" className="hover:opacity-100">Vegetables</Link>
@@ -33,7 +33,7 @@ export function Footer() {
             </div>
           </div>
           <div className="space-y-3">
-            <h4 className="font-semibold">Contact Us</h4>
+            <h2 className="font-semibold">Contact Us</h2>
             <div className="flex flex-col gap-2 text-sm opacity-70">
               <p>📞 +91 98765 43210</p>
               <p>📧 support@greenshop.in</p>

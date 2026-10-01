@@ -91,7 +91,7 @@ const Products = () => {
         description={`Browse ${offersOnly ? "today's special grocery deals" : activeCategory === "All" ? "fresh groceries, fruits, vegetables and daily essentials" : `${activeCategory.toLowerCase()} at great prices`}. Order online from EC SHOPPING.`}
       />
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <main id="main-content" className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">
           {searchParam ? `Search: "${searchParam}"` : activeCategory === "All" ? "All Products" : activeCategory}
         </h1>
@@ -115,11 +115,14 @@ const Products = () => {
               ))}
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            {filtered.length > 0 && <section aria-label="Products">
+              <h2 className="sr-only">Products</h2>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+                {filtered.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </section>}
 
             {filtered.length === 0 && (
               <div className="text-center py-20 text-muted-foreground">
@@ -128,7 +131,7 @@ const Products = () => {
             )}
           </>
         )}
-      </div>
+      </main>
       <Footer />
     </div>
   );

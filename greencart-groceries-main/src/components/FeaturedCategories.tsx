@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { categories as defaultCategories } from "@/lib/data";
 import { Link } from "react-router-dom";
 import { slugify } from "@/lib/slug";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 const CATEGORIES_KEY = "gc_categories";
 
@@ -35,7 +36,7 @@ export function FeaturedCategories() {
             className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card hover:bg-accent border border-transparent hover:border-primary/20 transition-all group"
           >
             <div className="w-16 h-16 rounded-full overflow-hidden bg-muted text-2xl grid place-items-center">
-              {cat.image ? <img src={cat.image} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" loading="lazy" /> : cat.icon}
+              {cat.image ? <img src={optimizeUnsplashImage(cat.image, 120, 120)} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" loading="lazy" width="120" height="120" /> : cat.icon}
             </div>
             <span className="text-xs font-medium text-center">{cat.name}</span>
           </Link>

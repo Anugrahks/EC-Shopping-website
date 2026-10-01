@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { categories } from "@/lib/data";
 import { slugify } from "@/lib/slug";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 export function HeroBanner() {
   return (
@@ -20,7 +21,7 @@ export function HeroBanner() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button asChild variant="default" className="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-700"><Link to="/products">Shop Now</Link></Button>
-                <Button asChild variant="outline" className="rounded-full border-emerald-600 text-emerald-600 px-4 py-2 text-sm"><Link to="/about">View More</Link></Button>
+                <Button asChild variant="outline" className="rounded-full border-emerald-700 text-emerald-700 px-4 py-2 text-sm"><Link to="/about">View More</Link></Button>
               </div>
 
               <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -30,7 +31,7 @@ export function HeroBanner() {
               </div>
             </div>
             <div className="rounded-xl overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=900" alt="Fresh groceries" className="w-full h-56 md:h-80 object-cover rounded-xl" />
+              <img src={optimizeUnsplashImage("https://images.unsplash.com/photo-1466637574441-749b8f19452f", 600, 386)} alt="Fresh groceries" width="600" height="386" fetchPriority="high" className="w-full h-56 md:h-80 object-cover rounded-xl" />
             </div>
           </div>
         </div>

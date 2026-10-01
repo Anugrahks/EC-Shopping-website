@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Star, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { slugify } from "@/lib/slug";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
@@ -20,13 +21,13 @@ export function ProductCard({ product }: { product: Product }) {
     <Card className="overflow-hidden border border-slate-200 rounded-2xl hover:shadow-lg transition-shadow duration-200 bg-white">
       <Link to={`/product/${slugify(product.category)}/${slugify(product.name)}`} className="relative block h-24 sm:h-36 md:h-44 overflow-hidden" aria-label={`View ${product.name}`}>
         <img
-          src={product.image}
+          src={optimizeUnsplashImage(product.image, 400, 400)}
           alt={product.name}
           className="w-full h-full object-cover"
           loading="lazy"
         />
         {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded-md">{discount}% OFF</span>
+          <span className="absolute top-2 left-2 bg-orange-700 text-white text-xs font-semibold px-2 py-1 rounded-md">{discount}% OFF</span>
         )}
       </Link>
       <div className="space-y-1 p-2 sm:p-3">
@@ -41,7 +42,7 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="flex items-center justify-between mt-2">
           <div>
             <div className="text-xs font-bold text-emerald-700 sm:text-sm">₹{isMember && product.isTodayOffer ? vipPrice : basePrice}</div>
-            {product.discountPrice && <div className="text-xs line-through text-slate-400">₹{product.price}</div>}
+            {product.discountPrice && <div className="text-xs line-through text-slate-500">₹{product.price}</div>}
           </div>
           <button
             onClick={(e) => { e.preventDefault(); addToCart(product); }}

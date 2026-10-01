@@ -12,15 +12,17 @@ import { SEOHead } from "@/components/SEOHead";
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead title="EC SHOPPING - Fresh Grocery Delivery | Online Supermarket India" description="Shop fresh fruits, vegetables, and daily essentials at EC SHOPPING. Enjoy great prices and convenient grocery delivery to your doorstep." />
+      <SEOHead title="EC SHOPPING - Fresh Grocery Delivery India" description="Shop fresh fruits, vegetables, meat, fish, snacks and daily essentials from EC SHOPPING in Panniyur, Kannur. Convenient doorstep delivery with cash on delivery." />
       <Navbar />
-      <HeroBanner />
-      <TodayOffers />
-      <FeaturedCategories />
-      <PopularProducts />
-      <DiscountBanner />
-      <AllProducts />
-      <Testimonials />
+      <main id="main-content">
+        <HeroBanner />
+        <TodayOffers />
+        <FeaturedCategories />
+        <PopularProducts />
+        <DiscountBanner />
+        <AllProducts />
+        <Testimonials />
+      </main>
       <Footer />
     </div>
   );

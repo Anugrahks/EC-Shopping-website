@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useCatalogProducts } from "@/lib/use-catalog-products";
 import { useTodayOffersBanners } from "@/lib/today-offers-banner";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 export function TodayOffers() {
   const products = useCatalogProducts();
@@ -34,7 +35,7 @@ export function TodayOffers() {
       <div className="container mx-auto px-4">
         {showBanner ? (
           <div className="relative mb-6 min-h-48 overflow-hidden rounded-2xl bg-emerald-900 sm:min-h-64" role="region" aria-roledescription="carousel" aria-label="Today's offers banners">
-            <img src={banner.image} alt={banner.title || "Today's grocery offers"} className="absolute inset-0 h-full w-full object-cover" />
+            <img src={optimizeUnsplashImage(banner.image, 1200, 600)} alt={banner.title || "Today's grocery offers"} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
             <div className="relative flex min-h-48 max-w-2xl flex-col items-start justify-center gap-3 p-6 text-white sm:min-h-64 sm:p-10">
               <h2 className="text-3xl font-bold sm:text-4xl">{banner.title || "Today's Offers"}</h2>

@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -11,6 +11,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { slugify } from "@/lib/slug";
 import { products as localProducts } from "@/lib/data";
 import { getCatalogProducts } from "@/lib/use-catalog-products";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 const ProductDetail = () => {
   const { id, categorySlug, productSlug } = useParams();
@@ -60,9 +61,9 @@ const ProductDetail = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container mx-auto px-4 py-20 text-center">
+        <main id="main-content" className="container mx-auto px-4 py-20 text-center">
           <p className="text-xl text-muted-foreground">Loading product...</p>
-        </div>
+        </main>
       </div>
     );
   }
@@ -71,12 +72,16 @@ const ProductDetail = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container mx-auto px-4 py-20 text-center">
+        <main id="main-content" className="container mx-auto px-4 py-20 text-center">
           <p className="text-xl text-muted-foreground">Product not found.</p>
           <Button asChild className="mt-4"><Link to="/products">Back to Shop</Link></Button>
-        </div>
+        </main>
       </div>
     );
+  }
+
+  if (id) {
+    return <Navigate replace to={`/product/${slugify(product.category)}/${slugify(product.name)}`} />;
   }
 
   const discount = product.discountPrice
@@ -108,13 +113,13 @@ const ProductDetail = () => {
         }}
       />
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <main id="main-content" className="container mx-auto px-4 py-8">
         <Link to="/products" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Shop
         </Link>
         <div className="grid md:grid-cols-2 gap-10">
           <div className="rounded-2xl overflow-hidden bg-muted/30 aspect-square">
-            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+            <img src={optimizeUnsplashImage(product.image, 800, 800)} alt={product.name} width="800" height="800" className="w-full h-full object-cover" />
           </div>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground">{product.category}</p>
@@ -156,7 +161,7 @@ const ProductDetail = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { optimizeUnsplashImage } from "@/lib/image-url";
 
 type SEOHeadProps = {
   title: string;
@@ -21,13 +22,17 @@ export function SEOHead({ title, description, image, jsonLd }: SEOHeadProps) {
     setMeta('meta[name="description"]', "content", description);
     setMeta('meta[property="og:title"]', "content", title);
     setMeta('meta[property="og:description"]', "content", description);
-    setMeta('meta[property="og:url"]', "content", window.location.href);
+    const canonicalUrl = `${window.location.origin}${window.location.pathname}`;
+    setMeta('meta[property="og:url"]', "content", canonicalUrl);
     setMeta('meta[name="twitter:title"]', "content", title);
     setMeta('meta[name="twitter:description"]', "content", description);
-    if (image) {
-      setMeta('meta[property="og:image"]', "content", image);
-      setMeta('meta[name="twitter:image"]', "content", image);
-    }
+    const socialImage = optimizeUnsplashImage(
+      image || "https://images.unsplash.com/photo-1466637574441-749b8f19452f",
+      1200,
+      630,
+    );
+    setMeta('meta[property="og:image"]', "content", socialImage);
+    setMeta('meta[name="twitter:image"]', "content", socialImage);
 
     let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!canonical) {
@@ -35,7 +40,7 @@ export function SEOHead({ title, description, image, jsonLd }: SEOHeadProps) {
       canonical.rel = "canonical";
       document.head.appendChild(canonical);
     }
-    canonical.href = `${window.location.origin}${window.location.pathname}`;
+    canonical.href = canonicalUrl;
 
     let schema = document.getElementById("page-json-ld");
     if (jsonLd) {
@@ -49,6 +54,10 @@ export function SEOHead({ title, description, image, jsonLd }: SEOHeadProps) {
     } else {
       schema?.remove();
     }
+
+    return () => {
+      if (jsonLd) document.getElementById("page-json-ld")?.remove();
+    };
   }, [title, description, image, jsonLd]);
 
   return null;

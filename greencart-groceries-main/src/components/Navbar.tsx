@@ -47,7 +47,7 @@ export function Navbar() {
 
           <div className="flex items-center gap-2">
             {!isAdminPage && (
-              <Link to="/cart" className="relative p-2 rounded-full bg-white text-emerald-700">
+              <Link to="/cart" aria-label={`Cart${totalItems > 0 ? `, ${totalItems} items` : ""}`} className="relative p-2 rounded-full bg-white text-emerald-700">
                 <ShoppingCart className="h-5 w-5" />
                 {totalItems > 0 && <Badge className="absolute -top-1 -right-1 h-4 w-4">{totalItems}</Badge>}
               </Link>

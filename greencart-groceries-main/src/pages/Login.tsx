@@ -23,13 +23,14 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto max-w-4xl px-4 py-10">
+      <main id="main-content" className="container mx-auto max-w-4xl px-4 py-10">
+        <h1 className="sr-only">Customer and member login</h1>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card className="p-6">
             <div className="mb-4 flex items-center gap-2">
               <span className="text-2xl">💳</span>
               <div>
-                <h1 className="text-xl font-bold">EC Member Login</h1>
+                <h2 className="text-xl font-bold">EC Member Login</h2>
                 <p className="text-sm text-muted-foreground">Only admin-approved member numbers can login.</p>
               </div>
             </div>
@@ -62,7 +63,7 @@ const Login = () => {
             <div className="mb-4 flex items-center gap-2">
               <span className="text-2xl">👤</span>
               <div>
-                <h1 className="text-xl font-bold">Customer Login / Register</h1>
+                <h2 className="text-xl font-bold">Customer Login / Register</h2>
                 <p className="text-sm text-muted-foreground">Register once, then login with phone.</p>
               </div>
             </div>
@@ -124,7 +125,7 @@ const Login = () => {
         <div className="mt-4 text-center text-sm text-muted-foreground">
           Already have a member number? Use member login. For normal shopping, use customer login.
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

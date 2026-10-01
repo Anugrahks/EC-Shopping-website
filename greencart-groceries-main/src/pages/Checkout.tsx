@@ -174,7 +174,7 @@ const Checkout = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container mx-auto px-4 py-20 text-center space-y-4">
+        <main id="main-content" className="container mx-auto px-4 py-20 text-center space-y-4">
           <CheckCircle className="h-20 w-20 text-primary mx-auto" />
           <h1 className="text-3xl font-bold">{savedOnThisDevice ? "Order Saved on This Device" : "Order Placed!"}</h1>
           <p className="text-muted-foreground">
@@ -183,7 +183,7 @@ const Checkout = () => {
               : `Your order has been placed successfully. You will pay ₹${totalVipPrice || 0} on delivery.`}
           </p>
           <Button onClick={() => navigate("/")} className="rounded-full">Continue Shopping</Button>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -197,7 +197,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <main id="main-content" className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-3">Checkout</h1>
         {isMember && (
           <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-800">
@@ -263,7 +263,7 @@ const Checkout = () => {
             </Button>
           </form>
           <Card className="p-6 h-fit space-y-4">
-            <h3 className="text-lg font-bold">Order Summary</h3>
+            <h2 className="text-lg font-bold">Order Summary</h2>
             <div className="space-y-3">
               {items.map(({ product, quantity }) => {
                 const base = product.discountPrice || product.price;
@@ -282,7 +282,7 @@ const Checkout = () => {
             </div>
           </Card>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

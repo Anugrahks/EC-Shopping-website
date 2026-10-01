@@ -322,8 +322,9 @@ const Admin = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center py-20">
+          <main id="main-content">
           <Card className="p-8 w-full max-w-sm space-y-4">
-            <h2 className="text-2xl font-bold text-center">Admin Login</h2>
+            <h1 className="text-2xl font-bold text-center">Admin Login</h1>
             <div className="space-y-2">
               <Label>Password</Label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter admin password" />
@@ -337,6 +338,7 @@ const Admin = () => {
             }}>Login</Button>
             <p className="text-xs text-muted-foreground text-center">Demo password: admin123</p>
           </Card>
+          </main>
         </div>
       </div>
     );
@@ -345,7 +347,7 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <main id="main-content" className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <LayoutDashboard className="h-6 w-6 text-primary" />
@@ -835,7 +837,7 @@ const Admin = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </main>
     </div>
   );
 };
