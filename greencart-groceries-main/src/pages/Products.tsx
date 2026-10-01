@@ -25,20 +25,6 @@ const Products = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const savedCatalog = localStorage.getItem("gc_products");
-      if (savedCatalog) {
-        try {
-          const savedProducts: Product[] = JSON.parse(savedCatalog);
-          if (Array.isArray(savedProducts)) {
-            setProducts(savedProducts);
-            setCategories(["All", ...new Set(savedProducts.map((product) => product.category))]);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          // Fall back to API/default catalog when local admin data is invalid.
-        }
-      }
       try {
         const [productsRes, categoriesRes] = await Promise.all([
           fetch("/api/products"),
@@ -47,10 +33,22 @@ const Products = () => {
         if (!productsRes.ok || !categoriesRes.ok) {
           throw new Error("Could not load data");
         }
+        if (productsRes.headers.get("X-Catalog-Storage") !== "configured") {
+          const savedProducts = localStorage.getItem("gc_products");
+          const savedCategories = localStorage.getItem("gc_categories");
+          const fallbackProducts = savedProducts ? JSON.parse(savedProducts) as Product[] : getCatalogProducts();
+          const fallbackCategories = savedCategories ? JSON.parse(savedCategories) as Array<{ name: string }> : localCategories;
+          setProducts(fallbackProducts);
+          setCategories(["All", ...fallbackCategories.map((category) => category.name)]);
+          return;
+        }
         const productsData = await productsRes.json();
         const categoriesData = await categoriesRes.json();
-        setProducts(Array.isArray(productsData) && productsData.length ? productsData : getCatalogProducts());
+        const availableProducts = Array.isArray(productsData) ? productsData : getCatalogProducts();
+        setProducts(availableProducts);
+        localStorage.setItem("gc_products", JSON.stringify(availableProducts));
         setCategories(["All", ...categoriesData.map((c: { name: string }) => c.name)]);
+        localStorage.setItem("gc_categories", JSON.stringify(categoriesData));
       } catch (error) {
         console.error(error);
         setProducts(getCatalogProducts());

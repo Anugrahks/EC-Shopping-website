@@ -35,9 +35,21 @@ type SavedOrder = {
   items: Array<{ productName: string; quantity: number; amount: number }>;
 };
 
+async function saveSharedCatalogWithToken(endpoint: string, value: unknown, token: string) {
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(value),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) throw new Error(result.message || "Could not save shared changes.");
+}
+
 const Admin = () => {
   const { members, addMember, removeMember, customerList } = useMember();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [adminToken, setAdminToken] = useState("");
+  const [sharedCatalogReady, setSharedCatalogReady] = useState(true);
   const [password, setPassword] = useState("");
   const [newMemberNumber, setNewMemberNumber] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
@@ -59,23 +71,105 @@ const Admin = () => {
         setOrders([]);
       }
     }
-    const storedCategories = localStorage.getItem(CATEGORIES_KEY);
-    if (storedCategories) {
+    let cancelled = false;
+    const loadCatalog = async () => {
       try {
-        setCategoriesList(JSON.parse(storedCategories));
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch("/api/products", { cache: "no-store" }),
+          fetch("/api/categories", { cache: "no-store" }),
+        ]);
+        if (!productsResponse.ok || !categoriesResponse.ok) throw new Error("Could not load the shared catalog.");
+        const [remoteProducts, remoteCategories] = await Promise.all([productsResponse.json(), categoriesResponse.json()]);
+        const legacyProducts = localStorage.getItem(PRODUCTS_KEY);
+        const legacyCategories = localStorage.getItem(CATEGORIES_KEY);
+        const productsInitialized = productsResponse.headers.get("X-Catalog-Initialized") === "true";
+        const categoriesInitialized = categoriesResponse.headers.get("X-Catalog-Initialized") === "true";
+        setSharedCatalogReady(productsResponse.headers.get("X-Catalog-Storage") === "configured" && categoriesResponse.headers.get("X-Catalog-Storage") === "configured");
+        const nextProducts = !productsInitialized && legacyProducts ? JSON.parse(legacyProducts) : remoteProducts;
+        const nextCategories = !categoriesInitialized && legacyCategories ? JSON.parse(legacyCategories) : remoteCategories;
+        if (cancelled) return;
+        setProductsList(Array.isArray(nextProducts) ? nextProducts : initialProducts);
+        setCategoriesList(Array.isArray(nextCategories) ? nextCategories : initialCategories);
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
       } catch {
-        setCategoriesList(initialCategories);
+        if (cancelled) return;
+        try {
+          const savedProducts = localStorage.getItem(PRODUCTS_KEY);
+          const savedCategories = localStorage.getItem(CATEGORIES_KEY);
+          if (savedProducts) setProductsList(JSON.parse(savedProducts));
+          if (savedCategories) setCategoriesList(JSON.parse(savedCategories));
+        } catch {
+          setProductsList(initialProducts);
+          setCategoriesList(initialCategories);
+        }
       }
-    }
-    const storedProducts = localStorage.getItem(PRODUCTS_KEY);
-    if (storedProducts) {
-      try {
-        setProductsList(JSON.parse(storedProducts));
-      } catch {
-        setProductsList(initialProducts);
-      }
-    }
+    };
+    void loadCatalog();
+    return () => { cancelled = true; };
   }, []);
+
+  const saveSharedCatalog = async (endpoint: string, value: unknown) => {
+    try {
+      await saveSharedCatalogWithToken(endpoint, value, adminToken);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("sign-in expired")) {
+        setAdminToken("");
+        setIsLoggedIn(false);
+      }
+      throw error;
+    }
+  };
+
+  const handleAdminLogin = async () => {
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success || typeof result.token !== "string") {
+        throw new Error(result.message || "Admin sign-in failed.");
+      }
+      setAdminToken(result.token);
+      setIsLoggedIn(true);
+      setPassword("");
+      try {
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch("/api/products", { cache: "no-store" }),
+          fetch("/api/categories", { cache: "no-store" }),
+        ]);
+        const catalogReady = productsResponse.headers.get("X-Catalog-Storage") === "configured" && categoriesResponse.headers.get("X-Catalog-Storage") === "configured";
+        setSharedCatalogReady(catalogReady);
+        const [remoteProducts, remoteCategories] = await Promise.all([productsResponse.json(), categoriesResponse.json()]) as [Product[], typeof initialCategories];
+        if (catalogReady) {
+          const productsInitialized = productsResponse.headers.get("X-Catalog-Initialized") === "true";
+          const categoriesInitialized = categoriesResponse.headers.get("X-Catalog-Initialized") === "true";
+          const nextProducts = productsInitialized
+            ? remoteProducts
+            : JSON.parse(localStorage.getItem(PRODUCTS_KEY) || JSON.stringify(remoteProducts)) as Product[];
+          const nextCategories = categoriesInitialized
+            ? remoteCategories
+            : JSON.parse(localStorage.getItem(CATEGORIES_KEY) || JSON.stringify(remoteCategories)) as typeof initialCategories;
+          await Promise.all([
+            saveSharedCatalogWithToken("/api/admin/products", nextProducts, result.token),
+            saveSharedCatalogWithToken("/api/admin/categories", nextCategories, result.token),
+          ]);
+          setProductsList(nextProducts);
+          setCategoriesList(nextCategories);
+          localStorage.setItem(PRODUCTS_KEY, JSON.stringify(nextProducts));
+          localStorage.setItem(CATEGORIES_KEY, JSON.stringify(nextCategories));
+          toast.success("Signed in and synced this device's catalog across devices.");
+        }
+        if (!catalogReady) throw new Error("Cloudflare KV is not bound yet. Add a CATALOG KV binding and ADMIN_PASSWORD secret to enable sharing across devices.");
+      } catch (error) {
+        toast.warning(error instanceof Error ? error.message : "Signed in, but the shared catalog could not sync.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Admin sign-in failed.");
+    }
+  };
 
   const openProductDialog = (product?: Product) => {
     setEditingProductId(product?.id ?? null);
@@ -259,15 +353,15 @@ const Admin = () => {
       isTodayOffer: editingProductId ? productsList.find((item) => item.id === editingProductId)?.isTodayOffer : false,
       isPopular: editingProductId ? productsList.find((item) => item.id === editingProductId)?.isPopular : false,
     };
-    setProductsList((previous) => {
-      const updated = editingProductId
-        ? previous.map((item) => item.id === editingProductId ? product : item)
-        : [...previous, product];
+    const updated = editingProductId
+      ? productsList.map((item) => item.id === editingProductId ? product : item)
+      : [...productsList, product];
+    void saveSharedCatalog("/api/admin/products", updated).then(() => {
+      setProductsList(updated);
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    setProductDialogOpen(false);
-    toast.success(editingProductId ? "Product updated" : "Product added");
+      setProductDialogOpen(false);
+      toast.success("Product saved and synced to all devices");
+    }).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Could not save the product."));
   };
 
   const refreshOrders = () => {
@@ -308,21 +402,21 @@ const Admin = () => {
   }, []);
 
   const toggleOffer = (id: string) => {
-    setProductsList((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, isTodayOffer: !p.isTodayOffer } : p));
+    const updated = productsList.map((product) => product.id === id ? { ...product, isTodayOffer: !product.isTodayOffer } : product);
+    void saveSharedCatalog("/api/admin/products", updated).then(() => {
+      setProductsList(updated);
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    toast.success("Offer updated");
+      toast.success("Offer updated and synced to all devices");
+    }).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Could not save the offer."));
   };
 
   const deleteProduct = (id: string) => {
-    setProductsList((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
+    const updated = productsList.filter((product) => product.id !== id);
+    void saveSharedCatalog("/api/admin/products", updated).then(() => {
+      setProductsList(updated);
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    toast.success("Product deleted");
+      toast.success("Product deleted from all devices");
+    }).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Could not delete the product."));
   };
 
   const stats = [
@@ -349,16 +443,9 @@ const Admin = () => {
             <h1 className="text-2xl font-bold text-center">Admin Login</h1>
             <div className="space-y-2">
               <Label>Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter admin password" />
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter admin password" onKeyDown={(event) => { if (event.key === "Enter") void handleAdminLogin(); }} />
             </div>
-            <Button className="w-full" onClick={() => {
-              if (password === "admin123") {
-                setIsLoggedIn(true);
-              } else {
-                toast.error("Invalid password");
-              }
-            }}>Login</Button>
-            <p className="text-xs text-muted-foreground text-center">Demo password: admin123</p>
+            <Button className="w-full" onClick={() => void handleAdminLogin()}>Login</Button>
           </Card>
           </main>
         </div>
@@ -391,6 +478,11 @@ const Admin = () => {
             </Card>
           ))}
         </div>
+
+        {!sharedCatalogReady && <Card className="mb-6 border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-semibold">Catalog changes are only saved on this device right now.</p>
+          <p>To share products with phones, configure the Cloudflare Pages <strong>CATALOG</strong> KV binding and <strong>ADMIN_PASSWORD</strong> secret, then redeploy. Saving will show an error until shared storage is ready.</p>
+        </Card>}
 
         <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -538,7 +630,7 @@ const Admin = () => {
               <div className="flex flex-col md:flex-row gap-2 md:items-end justify-between">
                 <div>
                   <h2 className="text-xl font-bold">Manage Categories</h2>
-                  <p className="text-sm text-muted-foreground">Add new categories and they appear on the home page.</p>
+                  <p className="text-sm text-muted-foreground">Add new categories and they sync to the home page on every device.</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto">
                   <Input
@@ -569,13 +661,13 @@ const Admin = () => {
                         icon: newCategory.icon.trim() || "🛍️",
                         image: newCategory.image.trim() || "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=200&fit=crop",
                       };
-                      setCategoriesList((prev) => {
-                        const next = [...prev, cat];
+                      const next = [...categoriesList, cat];
+                      void saveSharedCatalog("/api/admin/categories", next).then(() => {
+                        setCategoriesList(next);
                         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(next));
-                        return next;
-                      });
-                      setNewCategory({ name: "", icon: "", image: "" });
-                      toast.success("Category added");
+                        setNewCategory({ name: "", icon: "", image: "" });
+                        toast.success("Category added and synced to all devices");
+                      }).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Could not save the category."));
                     }}
                   >
                     Add Category

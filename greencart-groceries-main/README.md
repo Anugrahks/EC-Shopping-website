@@ -69,7 +69,21 @@ This project is built with:
 4. Set build command: `npm run build`.
 5. Set publish directory: `dist`.
 6. Configure the WhatsApp Cloud API variables below before accepting orders.
-7. Deploy. Your site will be available at `https://<project>.pages.dev`.
+7. Configure the shared product catalog below.
+8. Deploy. Your site will be available at `https://<project>.pages.dev`.
+
+#### Shared product catalog and admin access
+
+Products, sizes, categories, and today's-offer flags must use shared storage; browser `localStorage` is only a device-specific cache. To make changes in Admin appear on every phone:
+
+1. In Cloudflare, create a KV namespace (for example `EC_SHOPPING_CATALOG`).
+2. Open Workers & Pages > `ec-shopping-website` > Settings > Functions > KV namespace bindings. Add a binding with variable name `CATALOG` and select that namespace. Configure production and preview environments as needed.
+3. In Settings > Variables and Secrets, add `ADMIN_PASSWORD` as a secret. Use a new strong password; the old demo password was not secure and is no longer supported.
+4. Save the settings and redeploy the latest GitHub `main` deployment.
+5. Sign in at `/admin` with the secret. On the first sign-in, the current device's previously saved product/category lists are copied into shared KV if those lists have not been initialized yet. Do this first from the device/browser that contains the latest admin edits.
+6. A successful Admin save now confirms that changes synced. If the KV binding is missing, Admin displays a warning and product/category saves fail rather than pretending they synced.
+
+The storefront reads the shared catalog when this binding exists and refreshes it on page load, return to the tab, and every 30 seconds. Without this KV binding, each device can only show its own browser-local changes and built-in defaults.
 
 #### WhatsApp order notifications
 

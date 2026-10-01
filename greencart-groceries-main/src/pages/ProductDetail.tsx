@@ -27,17 +27,16 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const savedProduct = getCatalogProducts().find((item) => id
-          ? item.id === id
-          : slugify(item.category) === categorySlug && slugify(item.name) === productSlug);
-        if (savedProduct) {
-          setProduct(savedProduct);
-          return;
-        }
         if (categorySlug && productSlug) {
           const res = await fetch("/api/products");
           if (!res.ok) throw new Error("Could not load products");
           const allProducts: Product[] = await res.json();
+          if (res.headers.get("X-Catalog-Storage") !== "configured") {
+            const localProduct = getCatalogProducts().find((item) => slugify(item.category) === categorySlug && slugify(item.name) === productSlug);
+            setProduct(localProduct || null);
+            return;
+          }
+          localStorage.setItem("gc_products", JSON.stringify(allProducts));
           setProduct(allProducts.find((item) => slugify(item.category) === categorySlug && slugify(item.name) === productSlug) || null);
         } else {
           const res = await fetch(`/api/products/${id}`);
@@ -45,13 +44,21 @@ const ProductDetail = () => {
             setProduct(null);
             return;
           }
-          setProduct(await res.json());
+          const remoteProduct: Product = await res.json();
+          if (res.headers.get("X-Catalog-Storage") !== "configured") {
+            setProduct(getCatalogProducts().find((item) => item.id === id) || localProducts.find((item) => item.id === id) || null);
+            return;
+          }
+          setProduct(remoteProduct);
         }
       } catch (error) {
         console.error(error);
-        setProduct(localProducts.find((item) => id
+        const savedProducts = getCatalogProducts();
+        setProduct(savedProducts.find((item) => id
           ? item.id === id
-          : slugify(item.category) === categorySlug && slugify(item.name) === productSlug) || null);
+          : slugify(item.category) === categorySlug && slugify(item.name) === productSlug) || localProducts.find((item) => id
+            ? item.id === id
+            : slugify(item.category) === categorySlug && slugify(item.name) === productSlug) || null);
       } finally {
         setLoading(false);
       }

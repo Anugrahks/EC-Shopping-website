@@ -1,29 +1,10 @@
-import { useEffect, useState } from "react";
-import { categories as defaultCategories } from "@/lib/data";
 import { Link } from "react-router-dom";
 import { slugify } from "@/lib/slug";
 import { optimizeUnsplashImage } from "@/lib/image-url";
-
-const CATEGORIES_KEY = "gc_categories";
+import { useCatalogCategories } from "@/lib/use-catalog-products";
 
 export function FeaturedCategories() {
-  const [categories, setCategories] = useState(defaultCategories);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(CATEGORIES_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setCategories(parsed);
-          return;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setCategories(defaultCategories);
-  }, []);
+  const categories = useCatalogCategories();
 
   return (
     <section className="container mx-auto px-4 py-10">
